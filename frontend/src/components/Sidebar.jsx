@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-import { Home, Box, Database, GitMerge, Settings, HardDrive, ChevronsLeft, ChevronsRight, LogIn, LogOut } from 'lucide-react';
+import { Home, Box, Database, GitMerge, Settings, HardDrive, ChevronsLeft, ChevronsRight, LogIn, LogOut, Server } from 'lucide-react';
 
 const Sidebar = ({ deviceType }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -63,6 +63,9 @@ const Sidebar = ({ deviceType }) => {
         </NavLink>
         <NavLink to="/volumes" className={navLinkClasses} title="Volumes">
           <Database className={iconClasses} /> {!collapsed && 'Volumes'}
+        </NavLink>
+        <NavLink to="/nginx" className={navLinkClasses} title="Nginx">
+          <Server className={iconClasses} /> {!collapsed && 'Nginx'}
         </NavLink>
       </nav>
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">

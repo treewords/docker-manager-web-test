@@ -35,20 +35,16 @@ app.use('/api/networks', require('./routes/networks'));
 app.use('/api/volumes', require('./routes/volumes'));
 app.use('/api/health', require('./routes/health'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/nginx', require('./routes/nginx'));
 
 // --- Swagger API Documentation ---
 const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+const { errorHandler } = require('./utils/error-handler');
+
 // --- Error Handling ---
-app.use((err, req, res, next) => {
-  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal Server Error',
-    },
-  });
-});
+app.use(errorHandler);
 
 // --- Server Startup ---
 const PORT = process.env.PORT || 3000;
