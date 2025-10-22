@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  dashboard-api:
+    build: .
+    container_name: docker-manager-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount the docker socket to allow the container to manage docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist user data and logs
+      - ./data:/usr/src/app/data
+    env_file:
+      - .env
+    networks:
+      - docker-manager-net
+
+networks:
+  docker-manager-net:
+    driver: bridge

@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background dark:bg-dark-background text-text-primary dark:text-dark-text-primary;
+  transition: background-color 0.3s, color 0.3s;
+}
