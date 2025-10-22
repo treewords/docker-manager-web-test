@@ -8,14 +8,33 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Mount the docker socket to allow the container to manage docker
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist user data and logs
       - ./data:/usr/src/app/data
     env_file:
       - .env
     networks:
       - docker-manager-net
+    depends_on:
+      - nginx
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data/nginx/conf.d:/etc/nginx/conf.d
+      - ./data/nginx/ssl:/etc/nginx/ssl
+      - ./data/nginx/logs:/var/log/nginx
+    networks:
+      - docker-manager-net
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   docker-manager-net:

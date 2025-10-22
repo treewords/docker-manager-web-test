@@ -1,28 +1,24 @@
 const jwt = require('jsonwebtoken');
+const userStore = require('../services/user-store');
 
-module.exports = function (req, res, next) {
-  // Get token from header
-  const authHeader = req.header('Authorization');
-
-  // Check if not token
-  if (!authHeader) {
-    return res.status(401).json({ msg: 'No token, authorization denied' });
+const authMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authorization token is required' });
   }
 
-  // Check if token is in the correct format 'Bearer <token>'
-  const tokenParts = authHeader.split(' ');
-  if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-      return res.status(401).json({ msg: 'Token is not valid' });
-  }
-
-  const token = tokenParts[1];
-
-  // Verify token
+  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded.user;
+    const user = await userStore.findUserByUsername(decoded.username);
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token: user not found' });
+    }
+    req.user = user;
     next();
-  } catch (err) {
-    res.status(401).json({ msg: 'Token is not valid' });
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
+
+module.exports = authMiddleware;
