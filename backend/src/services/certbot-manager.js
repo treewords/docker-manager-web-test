@@ -2,6 +2,7 @@ const Docker = require('dockerode');
 const logger = require('../utils/logger');
 
 const CERTBOT_CONTAINER_NAME = 'certbot';
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 class CertbotManager {
   constructor() {
@@ -60,6 +61,9 @@ class CertbotManager {
 
   async requestCertificate(domain, email) {
     logger.info(`Requesting certificate for ${domain} with email ${email}...`);
+
+    await sleep(5000);
+
     const command = [
       'certbot', 'certonly',
       '--webroot',
@@ -74,6 +78,17 @@ class CertbotManager {
     ];
     await this._execInCertbot(command);
     logger.info(`Successfully obtained certificate for ${domain}.`);
+  }
+
+  async renewCertificates() {
+    logger.info('Attempting to renew SSL certificates...');
+    try {
+      const command = ['certbot', 'renew'];
+      const result = await this._execInCertbot(command);
+      logger.info('Certificates renewal check finished.', result);
+    } catch (error) {
+      logger.error('Failed to renew certificates:', error);
+    }
   }
 }
 

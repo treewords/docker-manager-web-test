@@ -13,6 +13,8 @@ const logger = require('./utils/logger');
 const userStore = require('./services/user-store');
 const nginxTaskStore = require('./services/nginx-task-store');
 const nginxManager = require('./services/nginx-manager');
+const certbotManager = require('./services/certbot-manager');
+const cron = require('node-cron');
 
 const app = express();
 const server = http.createServer(app);
@@ -71,6 +73,12 @@ const startServer = async () => {
     logger.info('Initializing services...');
     await userStore.init();
     await selfConfigureProxy();
+
+    // Schedule certificate renewal every 12 hours
+    cron.schedule('0 */12 * * *', () => {
+      logger.info('Running scheduled task: Renew SSL certificates...');
+      certbotManager.renewCertificates();
+    });
 
     server.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
