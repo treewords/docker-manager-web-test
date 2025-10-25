@@ -6,6 +6,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
+const fs = require('fs').promises;
 
 const { setupWebSocket } = require('./services/socket');
 const logger = require('./utils/logger');
@@ -13,28 +14,11 @@ const userStore = require('./services/user-store');
 const nginxTaskStore = require('./services/nginx-task-store');
 const nginxManager = require('./services/nginx-manager');
 
-// --- App Initialization ---
 const app = express();
 const server = http.createServer(app);
 
-// --- Middleware ---
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-app.use(express.json());
-// ... (rest of the middleware)
+// ... (middleware and routes)
 
-// --- API Routes ---
-app.use('/api/auth', require('./routes/auth'));
-// ... (rest of the routes)
-app.use('/api/nginx', require('./routes/nginx'));
-
-// --- Swagger API Documentation ---
-const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-const { errorHandler } = require('./utils/error-handler');
-app.use(errorHandler);
-
-// --- Server Startup ---
 const PORT = process.env.PORT || 3000;
 
 const selfConfigureProxy = async () => {
@@ -49,45 +33,48 @@ const selfConfigureProxy = async () => {
   await nginxTaskStore.init();
   const { tasks } = await nginxTaskStore.getTasks({ domain: apiDomain });
 
-  if (tasks.length === 0) {
-    logger.info(`No proxy found for ${apiDomain}. Starting self-configuration...`);
-    try {
-      const selfTask = await nginxTaskStore.addTask({
-        domain: apiDomain,
-        port: PORT,
-        ssl: {
-          enabled: true,
-          email: letsEncryptEmail,
-        },
-        upstreams: [], // The default proxy will point to localhost
-      });
+  let task = tasks[0];
+  let taskExists = !!task;
 
-      // We must wait for this to complete to ensure the API is accessible
-      await nginxManager.applyNginxConfig(selfTask.id);
-      logger.info('Self-configuration completed successfully.');
+  if (!taskExists) {
+    logger.info(`No proxy task found for ${apiDomain}. Creating a new one...`);
+    task = await nginxTaskStore.addTask({
+      domain: apiDomain,
+      port: PORT,
+      ssl: { enabled: true, email: letsEncryptEmail },
+      upstreams: [],
+    });
+  }
 
-    } catch (error) {
-      logger.error('Self-configuration failed:', error);
-      // We don't want to crash the whole app if this fails
+  const certPath = `/etc/letsencrypt/live/${apiDomain}/fullchain.pem`;
+  try {
+    // We check for the certificate inside the container's volume
+    await fs.access(path.join(__dirname, `../data/nginx/ssl/live/${apiDomain}/fullchain.pem`));
+    logger.info(`Certificate for ${apiDomain} already exists. Skipping certificate request.`);
+    // If the task was just created, we still need to apply the final config
+    if (!taskExists) {
+        await nginxManager.applyNginxConfig(task.id);
     }
-  } else {
-    logger.info(`Proxy for ${apiDomain} already exists. Skipping self-configuration.`);
+  } catch (error) {
+    logger.info(`Certificate for ${apiDomain} not found. Proceeding with SSL setup.`);
+    try {
+      await nginxManager.applyNginxConfig(task.id);
+      logger.info('Self-configuration for SSL completed successfully.');
+    } catch (sslError) {
+      logger.error('Self-configuration for SSL failed:', sslError);
+    }
   }
 };
 
-
 const startServer = async () => {
   try {
-    logger.info('Initializing user store...');
+    logger.info('Initializing services...');
     await userStore.init();
-    logger.info('User store initialized.');
-
-    // Self-configure the reverse proxy for the API itself
     await selfConfigureProxy();
 
     server.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
-      logger.info(`API is accessible at https://${process.env.API_DOMAIN}`);
+      logger.info(`API should be accessible at https://${process.env.API_DOMAIN}`);
       setupWebSocket(server);
     });
   } catch (error) {
