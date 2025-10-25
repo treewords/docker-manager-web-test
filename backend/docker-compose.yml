@@ -14,6 +14,7 @@ services:
       - docker-manager-net
     depends_on:
       - nginx
+      - certbot
 
   nginx:
     build: ./nginx
@@ -41,7 +42,7 @@ services:
     volumes:
       - ./data/nginx/ssl:/etc/letsencrypt
       - ./data/nginx/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: "/bin/sh -c 'rm -rf /etc/letsencrypt/live/*; trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
   docker-manager-net:

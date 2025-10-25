@@ -35,7 +35,6 @@ class CertbotManager {
 
         stream.on('data', chunk => {
           const data = chunk.toString('utf8');
-          // Certbot outputs progress to stderr, so we check for actual error markers
           if (data.toLowerCase().includes('error') || data.toLowerCase().includes('failed')) {
             errorOutput += data;
           } else {
@@ -43,16 +42,14 @@ class CertbotManager {
           }
         });
 
-        stream.on('end', () => {
-           exec.inspect((err, data) => {
-            if (err) return reject(err);
-            if (data.ExitCode !== 0) {
-              const errorMessage = errorOutput || output || `Command exited with code ${data.ExitCode}`;
-              logger.error(`Certbot command '${command.join(' ')}' failed: ${errorMessage}`);
-              return reject(new Error(errorMessage));
-            }
-            resolve(output);
-          });
+        exec.inspect((err, data) => {
+          if (err) return reject(err);
+          if (data.ExitCode !== 0) {
+            const errorMessage = errorOutput || output || `Command exited with code ${data.ExitCode}`;
+            logger.error(`Certbot command '${command.join(' ')}' failed: ${errorMessage}`);
+            return reject(new Error(errorMessage));
+          }
+          resolve(output);
         });
       });
     } catch (error) {
@@ -68,11 +65,12 @@ class CertbotManager {
       '--webroot',
       '--webroot-path', '/var/www/certbot',
       '--email', email,
-      '--domain', domain,
+      '-d', domain,
       '--agree-tos',
       '--no-eff-email',
       '--text',
       '--non-interactive',
+      '--force-renewal',
     ];
     await this._execInCertbot(command);
     logger.info(`Successfully obtained certificate for ${domain}.`);
