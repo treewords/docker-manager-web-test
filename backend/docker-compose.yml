@@ -26,8 +26,9 @@ services:
       - "443:443"
     volumes:
       - ./data/nginx/conf.d:/etc/nginx/conf.d
-      - ./data/nginx/ssl:/etc/nginx/ssl
+      - ./data/nginx/ssl:/etc/letsencrypt
       - ./data/nginx/logs:/var/log/nginx
+      - ./data/nginx/www:/var/www/certbot
     networks:
       - docker-manager-net
     healthcheck:
@@ -35,6 +36,15 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./data/nginx/ssl:/etc/letsencrypt
+      - ./data/nginx/www:/var/www/certbot
+    # Run certbot renew twice a day
+    command: renew --quiet --wait 30
 
 networks:
   docker-manager-net:
