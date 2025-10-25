@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   dashboard-api:
     build: .
@@ -43,8 +41,7 @@ services:
     volumes:
       - ./data/nginx/ssl:/etc/letsencrypt
       - ./data/nginx/www:/var/www/certbot
-    # Run certbot renew twice a day
-    command: renew --quiet --wait 30
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
   docker-manager-net:
