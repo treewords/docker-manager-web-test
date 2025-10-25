@@ -20,7 +20,7 @@ const MetricsDashboard = ({ metrics, onClose }) => {
 
   const { totalRequests, avgResponseTime, errorRate, statusCodes, topEndpoints } = metrics;
 
-  const statusData = Object.entries(statusCodes).map(([name, value])_ => ({ name, value }));
+  const statusData = Object.entries(statusCodes).map(([name, value]) => ({ name, value }));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
