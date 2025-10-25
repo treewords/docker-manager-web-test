@@ -53,6 +53,10 @@ server {
   listen 80;
   server_name ${task.domain};
 
+  location /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+  }
+
   location / {
     return 301 https://$host$request_uri;
   }
@@ -74,8 +78,8 @@ server {
   listen 443 ssl;
   server_name ${task.domain};
 
-  ssl_certificate /etc/nginx/ssl/self-signed.crt;
-  ssl_certificate_key /etc/nginx/ssl/self-signed.key;
+  ssl_certificate /etc/letsencrypt/live/${task.domain}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${task.domain}/privkey.pem;
 
   location / {
     proxy_pass ${proxyPass};
