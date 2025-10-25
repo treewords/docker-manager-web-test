@@ -8,7 +8,7 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 
 const { setupWebSocket } = require('./services/socket');
-const { logger } = require('./config/logger');
+const logger = require('./utils/logger');
 const userStore = require('./services/user-store');
 const nginxTaskStore = require('./services/nginx-task-store');
 const nginxManager = require('./services/nginx-manager');
