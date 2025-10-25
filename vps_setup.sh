@@ -105,7 +105,7 @@ setup_firewall_and_dependencies() {
     echo "IMPORTANT: $NEW_USER must log out and log back in for Docker group permissions to apply."
 
     echo "Installing Nginx, Certbot, HIDS tools, and other dependencies..."
-    apt-get install -y nginx certbot python3-certbot-nginx fail2ban aide unattended-upgrades \
+    apt-get install -y fail2ban aide unattended-upgrades \
                        build-essential make zlib1g-dev libpcre2-dev libevent-dev libssl-dev libsystemd-dev
     echo "All dependencies installed."
 
@@ -254,108 +254,6 @@ EOF
     rm -rf "/tmp/${ossec_dir}"
     rm -f "/tmp/${ossec_archive}"
     echo "Cleaned up OSSEC source files."
-}
-
-# Creates a valid Nginx configuration that is ready for Certbot
-setup_nginx() {
-    echo "--- [8/12] Configuring Nginx reverse proxy ---"
-
-    echo "Creating Nginx configuration for $API_DOMAIN..."
-    cat > /etc/nginx/sites-available/$API_DOMAIN << EOF
-server {
-    listen 80;
-    server_name $API_DOMAIN;
-
-    server_tokens off;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location /socket.io/ {
-        proxy_pass http://localhost:3000/socket.io/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-    }
-}
-EOF
-
-    ln -sfn /etc/nginx/sites-available/$API_DOMAIN /etc/nginx/sites-enabled/$API_DOMAIN
-    rm -f /etc/nginx/sites-enabled/default
-
-    if nginx -t >/dev/null 2>&1; then
-        systemctl restart nginx
-        echo "Nginx configured and restarted for $API_DOMAIN."
-        echo "The server is now ready for you to run Certbot to obtain an SSL certificate."
-    else
-        echo "Error: Nginx configuration test failed. Please check the configuration."
-        return 1
-    fi
-}
-
-# Automates SSL certificate generation using Certbot
-setup_ssl() {
-    echo "--- [9/12] Generating SSL certificate with Certbot ---"
-
-    echo "Requesting SSL certificate for $API_DOMAIN..."
-    if certbot --nginx -d "$API_DOMAIN" --agree-tos --no-eff-email --email "$LETSENCRYPT_EMAIL" --non-interactive --redirect >/dev/null 2>&1; then
-        echo "Certbot has successfully generated and installed the SSL certificate."
-    else
-        echo "Error: Certbot failed to generate SSL certificate. Please verify DNS configuration and try again."
-        return 1
-    fi
-}
-
-# Applies advanced security settings to the Certbot-generated Nginx config
-harden_nginx_ssl() {
-    echo "--- [10/12] Applying advanced Nginx hardening ---"
-
-    local nginx_conf="/etc/nginx/sites-available/$API_DOMAIN"
-
-    if [ ! -f "$nginx_conf" ]; then
-        echo "Error: Nginx configuration file $nginx_conf not found. Skipping hardening."
-        return 1
-    fi
-
-    cat >> "$nginx_conf" << 'EOF'
-
-    # Hardened SSL Settings from ADVANCED_SECURITY.md
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
-    ssl_ecdh_curve secp384r1;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-
-    # Security Headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" always;
-EOF
-
-    echo "Advanced security headers and SSL settings applied to Nginx configuration."
-
-    if nginx -t >/dev/null 2>&1; then
-        systemctl reload nginx
-        echo "Nginx reloaded with hardened SSL configuration."
-    else
-        echo "Error: Nginx configuration test failed after hardening. Please review the configuration."
-        return 1
-    fi
 }
 
 # Creates a helper script for setting up the application with systemd
@@ -514,9 +412,6 @@ main() {
     setup_fail2ban
     setup_system_hardening
     setup_ossec
-    setup_nginx
-    setup_ssl
-    harden_nginx_ssl
     create_systemd_helper_script
     final_summary
 }
