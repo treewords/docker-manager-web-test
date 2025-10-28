@@ -1,0 +1,276 @@
+openapi: 3.0.0
+info:
+  title: Docker Manager API
+  description: API for managing Docker containers, including auth, control, and real-time logs.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.your-domain.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          example: changeme
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    Container:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4e5f6"
+        name:
+          type: string
+          example: "my-nginx-container"
+        image:
+          type: string
+          example: "nginx:latest"
+        state:
+          type: string
+          example: "running"
+        status:
+          type: string
+          example: "Up 2 hours"
+        ports:
+          type: array
+          items:
+            type: object
+            properties:
+              IP:
+                type: string
+              PrivatePort:
+                type: integer
+              PublicPort:
+                type: integer
+              Type:
+                type: string
+
+    CreateContainerRequest:
+      type: object
+      required:
+        - image
+      properties:
+        image:
+          type: string
+          description: "The Docker image to use (e.g., 'nginx:latest')."
+        name:
+          type: string
+          description: "A name for the container."
+        ports:
+          type: array
+          items:
+            type: string
+            example: "8080:80"
+          description: "Port mappings in 'host:container' format."
+        env:
+          type: array
+          items:
+            type: string
+            example: "MY_VAR=my_value"
+          description: "Environment variables."
+
+    PullImageRequest:
+      type: object
+      required:
+        - imageName
+      properties:
+        imageName:
+          type: string
+          example: "alpine:latest"
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/health:
+    get:
+      summary: Health Check
+      description: Returns the operational status of the API.
+      security: [] # No auth required for health check
+      responses:
+        '200':
+          description: API is up and running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/auth/login:
+    post:
+      summary: User Login
+      description: Authenticate a user and receive a JWT.
+      security: [] # No auth required for login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Bad Request (missing credentials)
+        '401':
+          description: Unauthorized (invalid credentials)
+
+  /api/containers:
+    get:
+      summary: List Containers
+      description: Retrieves a list of all Docker containers.
+      responses:
+        '200':
+          description: A list of containers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Container'
+        '401':
+          description: Unauthorized
+
+  /api/containers/create:
+    post:
+      summary: Create Container
+      description: Creates and starts a new Docker container.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContainerRequest'
+      responses:
+        '201':
+          description: Container created successfully.
+        '400':
+          description: Bad Request (e.g., missing image name)
+        '401':
+          description: Unauthorized
+
+  /api/containers/{id}/start:
+    post:
+      summary: Start a Container
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container started.
+        '401':
+          description: Unauthorized
+        '404':
+          description: Container not found.
+
+  /api/containers/{id}/stop:
+    post:
+      summary: Stop a Container
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container stopped.
+        '401':
+          description: Unauthorized
+        '404':
+          description: Container not found.
+
+  /api/containers/{id}/restart:
+    post:
+      summary: Restart a Container
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container restarted.
+        '401':
+          description: Unauthorized
+        '404':
+          description: Container not found.
+
+  /api/containers/{id}:
+    delete:
+      summary: Remove a Container
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container removed.
+        '401':
+          description: Unauthorized
+        '404':
+          description: Container not found.
+
+  /api/images/pull:
+    post:
+      summary: Pull a Docker Image
+      description: Pulls an image from a registry (e.g., Docker Hub). This is an asynchronous operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullImageRequest'
+      responses:
+        '202':
+          description: Image pull started.
+        '400':
+          description: Bad Request (missing image name)
+        '401':
+          description: Unauthorized

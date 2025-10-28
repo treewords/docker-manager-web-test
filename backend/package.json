@@ -1,0 +1,29 @@
+{
+  "name": "docker-manager-backend",
+  "version": "1.0.0",
+  "description": "Backend for Docker Manager Dashboard",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "sudo -E node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dockerode": "^3.3.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-validator": "^6.14.2",
+    "express-winston": "^4.2.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
+    "socket.io": "^4.5.4",
+    "swagger-ui-express": "^4.6.0",
+    "uuid": "^9.0.0",
+    "winston": "^3.8.2",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
