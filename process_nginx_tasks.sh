@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# --- How to Use ---
+# This script is designed to be run by a cron job to automate Nginx configuration.
+#
+# 1.  **Permissions:**
+#     - Make the script executable: `chmod +x /path/to/process_nginx_tasks.sh`
+#     - The user running this script needs passwordless sudo access for the following
+#       commands: `systemctl`, `certbot`, `ln`, `rm`, and `nginx`.
+#     - To grant access, run `sudo visudo` and add a line like this, replacing `your_user`:
+#       `your_user ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /usr/bin/certbot, /bin/ln, /bin/rm, /usr/sbin/nginx`
+#
+# 2.  **Cron Job Setup:**
+#     - Open the crontab for editing: `crontab -e`
+#     - Add a line to run this script at your desired interval. For example, to run it
+#       every 5 minutes, add the following line:
+#       `*/5 * * * * /path/to/process_nginx_tasks.sh`
+#
+# 3.  **Configuration:**
+#     - Ensure the paths in the `Configuration` section below are correct for your system.
+
+
 # This script processes Nginx tasks from a JSON file.
 # It should be run by a cron job on the host machine.
 
