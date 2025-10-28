@@ -421,6 +421,7 @@ harden_nginx_ssl() {
     echo "--- [11/13] Applying advanced Nginx hardening ---"
 
     local nginx_conf="/etc/nginx/sites-available/$API_DOMAIN"
+    local letsencrypt_options="/etc/letsencrypt/options-ssl-nginx.conf"
 
     if [ ! -f "$nginx_conf" ]; then
         echo "Error: Nginx configuration file $nginx_conf not found. Skipping hardening."
@@ -430,7 +431,8 @@ harden_nginx_ssl() {
     # Create a backup
     cp "$nginx_conf" "${nginx_conf}.backup"
 
-    # Remove any duplicate SSL directives that might cause issues
+    # Remove any duplicate SSL directives from the site config only
+    # (Certbot includes these in /etc/letsencrypt/options-ssl-nginx.conf)
     sed -i '/^[[:space:]]*ssl_protocols/d' "$nginx_conf"
     sed -i '/^[[:space:]]*ssl_prefer_server_ciphers/d' "$nginx_conf"
     sed -i '/^[[:space:]]*ssl_ciphers/d' "$nginx_conf"
@@ -439,20 +441,39 @@ harden_nginx_ssl() {
     sed -i '/^[[:space:]]*ssl_session_tickets/d' "$nginx_conf"
     sed -i '/^[[:space:]]*ssl_stapling/d' "$nginx_conf"
 
-    # Use awk to insert hardened settings right after the ssl_certificate_key line in the 443 block
+    # Update the Let's Encrypt options file with hardened settings
+    # This ensures all SSL settings are in one place and there are no duplicates
+    if [ -f "$letsencrypt_options" ]; then
+        cp "$letsencrypt_options" "${letsencrypt_options}.backup"
+        
+        # Remove old SSL directives from the Let's Encrypt file
+        sed -i '/^ssl_protocols/d' "$letsencrypt_options"
+        sed -i '/^ssl_prefer_server_ciphers/d' "$letsencrypt_options"
+        sed -i '/^ssl_ciphers/d' "$letsencrypt_options"
+        sed -i '/^ssl_ecdh_curve/d' "$letsencrypt_options"
+        sed -i '/^ssl_session_cache/d' "$letsencrypt_options"
+        sed -i '/^ssl_session_tickets/d' "$letsencrypt_options"
+        sed -i '/^ssl_stapling/d' "$letsencrypt_options"
+        
+        # Append hardened settings to the Let's Encrypt options file
+        cat >> "$letsencrypt_options" << 'EOF'
+
+# Hardened SSL Settings from ADVANCED_SECURITY.md
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers on;
+ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
+ssl_ecdh_curve secp384r1;
+ssl_session_cache shared:SSL:10m;
+ssl_session_tickets off;
+ssl_stapling on;
+ssl_stapling_verify on;
+EOF
+    fi
+
+    # Add security headers to the site config
     awk '
     /ssl_certificate_key/ && !inserted {
         print $0
-        print ""
-        print "    # Hardened SSL Settings from ADVANCED_SECURITY.md"
-        print "    ssl_protocols TLSv1.2 TLSv1.3;"
-        print "    ssl_prefer_server_ciphers on;"
-        print "    ssl_ciphers \"EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH\";"
-        print "    ssl_ecdh_curve secp384r1;"
-        print "    ssl_session_cache shared:SSL:10m;"
-        print "    ssl_session_tickets off;"
-        print "    ssl_stapling on;"
-        print "    ssl_stapling_verify on;"
         print ""
         print "    # Security Headers"
         print "    add_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;"
@@ -475,14 +496,18 @@ harden_nginx_ssl() {
         echo "Nginx reloaded with hardened SSL configuration."
     else
         echo "Error: Nginx configuration test failed after hardening."
-        echo "Restoring backup configuration..."
+        echo "Restoring backup configurations..."
         mv "${nginx_conf}.backup" "$nginx_conf"
+        if [ -f "${letsencrypt_options}.backup" ]; then
+            mv "${letsencrypt_options}.backup" "$letsencrypt_options"
+        fi
         systemctl reload nginx
         return 1
     fi
     
-    # Remove backup if successful
+    # Remove backups if successful
     rm -f "${nginx_conf}.backup"
+    rm -f "${letsencrypt_options}.backup"
 }
 
 # Setup Docker security and resource limits
