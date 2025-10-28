@@ -416,7 +416,7 @@ setup_ssl() {
     fi
 }
 
-# Applies advanced security settings to the Certbot-generated Nginx config
+# Applies advanced security settings to the Certbot-generated Nginx config (FIXED VERSION)
 harden_nginx_ssl() {
     echo "--- [11/13] Applying advanced Nginx hardening ---"
 
@@ -430,45 +430,43 @@ harden_nginx_ssl() {
     # Create a backup
     cp "$nginx_conf" "${nginx_conf}.backup"
 
-    # Insert hardened SSL settings into the SSL server block (the one listening on 443)
-    # We'll use sed to insert before the last closing brace of the 443 server block
-    
-    # First, let's create the hardening snippet
-    cat > /tmp/nginx_hardening.conf << 'EOF'
+    # Remove any duplicate SSL directives that might cause issues
+    sed -i '/^[[:space:]]*ssl_protocols/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_prefer_server_ciphers/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_ciphers/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_ecdh_curve/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_session_cache/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_session_tickets/d' "$nginx_conf"
+    sed -i '/^[[:space:]]*ssl_stapling/d' "$nginx_conf"
 
-    # Hardened SSL Settings from ADVANCED_SECURITY.md
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
-    ssl_ecdh_curve secp384r1;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-
-    # Security Headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" always;
-EOF
-
-    # Use awk to properly insert the hardening into the SSL server block
+    # Use awk to insert hardened settings right after the ssl_certificate_key line in the 443 block
     awk '
-    /listen 443 ssl/ { in_ssl_block=1 }
-    in_ssl_block && /^}/ && !inserted { 
-        while ((getline line < "/tmp/nginx_hardening.conf") > 0) {
-            print line
-        }
-        close("/tmp/nginx_hardening.conf")
+    /ssl_certificate_key/ && !inserted {
+        print $0
+        print ""
+        print "    # Hardened SSL Settings from ADVANCED_SECURITY.md"
+        print "    ssl_protocols TLSv1.2 TLSv1.3;"
+        print "    ssl_prefer_server_ciphers on;"
+        print "    ssl_ciphers \"EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH\";"
+        print "    ssl_ecdh_curve secp384r1;"
+        print "    ssl_session_cache shared:SSL:10m;"
+        print "    ssl_session_tickets off;"
+        print "    ssl_stapling on;"
+        print "    ssl_stapling_verify on;"
+        print ""
+        print "    # Security Headers"
+        print "    add_header Strict-Transport-Security \"max-age=63072000; includeSubDomains; preload\" always;"
+        print "    add_header X-Content-Type-Options \"nosniff\" always;"
+        print "    add_header X-Frame-Options \"SAMEORIGIN\" always;"
+        print "    add_header Referrer-Policy \"no-referrer-when-downgrade\" always;"
+        print "    add_header Content-Security-Policy \"default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-eval'\''; object-src '\''none'\''; style-src '\''self'\'' '\''unsafe-inline'\''; img-src '\''self'\'' data:;\" always;"
         inserted=1
+        next
     }
     { print }
     ' "$nginx_conf" > "${nginx_conf}.tmp"
     
     mv "${nginx_conf}.tmp" "$nginx_conf"
-    rm -f /tmp/nginx_hardening.conf
 
     echo "Advanced security headers and SSL settings applied to Nginx configuration."
 
@@ -693,7 +691,7 @@ final_summary() {
 # --- Script Execution ---
 
 main() {
-    echo "--- [1/12] Starting Comprehensive VPS Security Setup ---"
+    echo "--- [1/13] Starting Comprehensive VPS Security Setup ---"
 
     if [ "$(id -u)" -ne 0 ]; then
       echo "This script must be run as root. Please use 'sudo ./vps_setup.sh' or run as the root user."
