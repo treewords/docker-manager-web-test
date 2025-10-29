@@ -41,6 +41,7 @@ const BuildLogViewer = ({ imageName, onClose }) => {
       auth: {
         token: token,
       },
+      transports: ['websocket'],
     });
 
     socket.on('connect', () => {
