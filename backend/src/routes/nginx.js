@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { getTasks, addTask, updateTaskStatusToDelete } = require('../services/nginx-task-store');
-const logger = require('../config/logger');
+const { logger } = require('../config/logger');
 
 const router = express.Router();
 
