@@ -11,11 +11,16 @@ const tasksFilePath = process.env.NGINX_TASKS_FILE_PATH || path.join(__dirname, 
 async function getTasks() {
   try {
     const data = await fs.readFile(tasksFilePath, 'utf8');
+    // If the file is empty or just whitespace, return an empty array.
+    if (!data.trim()) {
+      return [];
+    }
     return JSON.parse(data);
   } catch (error) {
     if (error.code === 'ENOENT') {
       return []; // Return an empty array if the file doesn't exist
     }
+    // Re-throw other errors to be handled by the caller.
     throw error;
   }
 }
