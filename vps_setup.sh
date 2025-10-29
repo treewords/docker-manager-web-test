@@ -691,9 +691,10 @@ EOF
     touch /var/log/nginx-task-processor.log
     chown "$NEW_USER:$NEW_USER" /var/log/nginx-task-processor.log
 
-    # Grant passwordless sudo for specific commands
-    echo "$NEW_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /usr/bin/certbot, /bin/ln, /bin/rm, /usr/sbin/nginx" > "/etc/sudoers.d/nginx-processor"
-    chmod 440 "/etc/sudoers.d/nginx-processor"
+    # Grant passwordless sudo for specific, restricted commands
+    SUDOERS_FILE="/etc/sudoers.d/nginx-processor"
+    echo "$NEW_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /usr/bin/certbot, /usr/sbin/nginx, /bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/, /bin/rm /etc/nginx/sites-enabled/*, /bin/rm /etc/nginx/sites-available/*" > "$SUDOERS_FILE"
+    chmod 440 "$SUDOERS_FILE"
 
     # Set up the cron job to run as the new user
     (crontab -u "$NEW_USER" -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/process_nginx_tasks.sh") | crontab -u "$NEW_USER" -
@@ -740,6 +741,9 @@ version: '3.8'
 
 services:
   api:
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - /var/lib/nginx-tasks:/usr/src/app/data
     security_opt:
       - no-new-privileges:true
     read_only: false
@@ -795,12 +799,15 @@ if [ ! -d "$BACKEND_PATH" ] || [ ! -f "$BACKEND_PATH/Dockerfile" ]; then
     exit 1
 fi
 
+APP_USER_ID=$(id -u)
+APP_GROUP_ID=$(id -g)
+
 echo "Building the Docker image 'dashboard-api'..."
 (cd "$BACKEND_PATH" && docker build -t dashboard-api .)
 
 echo "Creating the systemd service file..."
 
-# Note: We need to substitute $BACKEND_PATH into the systemd file
+# Note: We need to substitute variables into the systemd file
 # Using a temporary file approach to handle the variable substitution properly
 sudo bash << SYSTEMD_EOF
 cat > /etc/systemd/system/docker-manager-api.service << 'SERVICE_FILE'
@@ -815,18 +822,21 @@ Restart=always
 ExecStartPre=-/usr/bin/docker stop docker-manager-api
 ExecStartPre=-/usr/bin/docker rm docker-manager-api
 ExecStart=/usr/bin/docker run --rm --name docker-manager-api \\
+  --user __APP_USER_ID__:__APP_GROUP_ID__ \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  -v ${BACKEND_PATH}/data:/usr/src/app/data \\
+  -v /var/lib/nginx-tasks:/usr/src/app/data \\
   -p 127.0.0.1:3000:3000 \\
-  --env-file ${BACKEND_PATH}/.env \\
+  --env-file __BACKEND_PATH__/.env \\
   dashboard-api
 
 [Install]
 WantedBy=multi-user.target
 SERVICE_FILE
 
-# Now substitute the BACKEND_PATH variable
-sed -i "s|\${BACKEND_PATH}|${BACKEND_PATH}|g" /etc/systemd/system/docker-manager-api.service
+# Now substitute the variables
+sed -i "s|__APP_USER_ID__|${APP_USER_ID}|g" /etc/systemd/system/docker-manager-api.service
+sed -i "s|__APP_GROUP_ID__|${APP_GROUP_ID}|g" /etc/systemd/system/docker-manager-api.service
+sed -i "s|__BACKEND_PATH__|${BACKEND_PATH}|g" /etc/systemd/system/docker-manager-api.service
 SYSTEMD_EOF
 
 echo "Enabling and starting the service..."
