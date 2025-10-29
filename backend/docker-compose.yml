@@ -5,13 +5,16 @@ services:
     build: .
     container_name: docker-manager-api
     restart: unless-stopped
+    # It is recommended to use the docker-compose.security.yml override for production
+    # to run the container as a non-root user.
+    # user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       # Mount the docker socket to allow the container to manage docker
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist user data and logs
-      - ./data:/usr/src/app/data
+      # Mount the shared directory for Nginx task processing
+      - /var/lib/nginx-tasks:/usr/src/app/data
     env_file:
       - .env
     networks:
