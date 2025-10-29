@@ -409,10 +409,7 @@ async function listVolumes() {
  * @param {object} user - The user object from the request.
  * @returns {Promise<void>}
  */
-async function buildImage(repoUrl, imageName, user) {
-  const { getIO } = require('./socket');
-  const io = getIO();
-
+async function buildImage(repoUrl, imageName, user, io) {
   return new Promise(async (resolve, reject) => {
     let remoteUrl = repoUrl;
     if (user) {

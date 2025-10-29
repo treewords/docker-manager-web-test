@@ -2,6 +2,7 @@ const express = require('express');
 const dockerService = require('../services/docker');
 const auth = require('../middleware/auth');
 const { logAction } = require('../config/logger');
+const { getIO } = require('../services/socket');
 
 const router = express.Router();
 
@@ -55,12 +56,13 @@ router.post('/build', async (req, res, next) => {
   }
 
   const fullImageName = tag ? `${imageName}:${tag}` : imageName;
+  const io = getIO();
 
   try {
     logAction(req.user, 'build_image_start', { repoUrl, imageName: fullImageName });
 
     // Asynchronous operation, don't wait for it to finish
-    dockerService.buildImage(repoUrl, fullImageName, req.user)
+    dockerService.buildImage(repoUrl, fullImageName, req.user, io)
       .then(() => {
         logAction(req.user, 'build_image_success', { repoUrl, imageName: fullImageName });
       })
