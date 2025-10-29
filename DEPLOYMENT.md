@@ -1,52 +1,32 @@
-# Deployment Guide: Docker Manager Dashboard
+# Manual Deployment Guide
 
-This guide provides step-by-step instructions to deploy the backend on a Linux VPS and the frontend on cPanel hosting.
+This guide provides step-by-step instructions for a manual deployment of the Docker Manager Dashboard.
 
-### **Assumptions & Placeholders**
-
-Before you begin, replace these placeholders in the commands and configurations below:
-
--   `api.your-domain.com`: The domain for your backend API.
--   `your-domain.com`: The domain for your frontend application.
--   `YOUR_VPS_IP`: The public IP address of your VPS.
--   `your-user`: The non-root user you will create on the VPS.
--   `your@email.com`: Your email address for Let's Encrypt SSL certificates.
-
----
+> **Note:** For a faster, more secure, and comprehensive setup, we strongly recommend using the automated [`vps_setup.sh`](../vps_setup.sh) script on a fresh Ubuntu 22.04 server. This script handles all the steps in this guide and more, including advanced security hardening. This manual guide is intended for users who want to customize their setup or deploy on a different OS.
 
 ## Part 1: Initial VPS Setup (Ubuntu 22.04)
 
-These commands set up a secure, production-ready server environment.
+These commands set up a basic server environment.
 
 ### 1.1. Create a Non-Root User & Harden SSH
 
 First, connect to your VPS as `root`.
 
 ```bash
-# Create a new user (you will be prompted for a password)
+# Create a new user and add them to the sudo group
 adduser your-user
-
-# Add the new user to the 'sudo' group to grant administrative privileges
 usermod -aG sudo your-user
 
-# Optional but recommended: Copy root's authorized SSH keys to the new user
+# Set up SSH key for the new user (replace with your actual public key)
 mkdir -p /home/your-user/.ssh
-cp /root/.ssh/authorized_keys /home/your-user/.ssh/authorized_keys
+echo "ssh-rsa AAAA..." > /home/your-user/.ssh/authorized_keys
 chown -R your-user:your-user /home/your-user/.ssh
+chmod 700 /home/your-user/.ssh
+chmod 600 /home/your-user/.ssh/authorized_keys
 
-# Now, disable root login over SSH for better security
-nano /etc/ssh/sshd_config
-```
-
-In the editor, find the line `PermitRootLogin` and change it to `no`.
-
-```
-PermitRootLogin no
-```
-
-Save the file (`Ctrl+X`, then `Y`, then `Enter`) and restart the SSH service:
-
-```bash
+# Harden SSH configuration
+sed -i -E 's/^#?PermitRootLogin\s+.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i -E 's/^#?PasswordAuthentication\s+.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 systemctl restart sshd
 ```
 
@@ -54,280 +34,204 @@ systemctl restart sshd
 
 ### 1.2. Configure Firewall (UFW)
 
-We will use UFW (Uncomplicated Firewall) to secure the server.
-
 ```bash
-# Allow SSH (port 22), HTTP (port 80), and HTTPS (port 443)
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# Enable the firewall
+# Allow essential ports and enable the firewall
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
 sudo ufw enable
 ```
 
-### 1.3. Install Docker and Docker Compose
-
-The backend runs in Docker, providing isolation and easy management.
+### 1.3. Install Dependencies
 
 ```bash
-# Install Docker Engine
+# Install Docker
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Add your user to the 'docker' group to run docker commands without sudo
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 sudo usermod -aG docker your-user
+
+# Install Nginx and Certbot
+sudo apt-get install -y nginx certbot python3-certbot-nginx
 ```
 
-**You must log out and log back in for the group change to take effect.**
-
-### 1.4. Install Nginx and Certbot
-
-Nginx will act as a reverse proxy, and Certbot will provide free SSL certificates.
-
-```bash
-# Install Nginx
-sudo apt-get install -y nginx
-
-# Install Certbot for Let's Encrypt
-sudo apt-get install -y certbot python3-certbot-nginx
-```
-
----
+**Log out and log back in again for Docker group permissions to apply.**
 
 ## Part 2: Backend Deployment
 
-### 2.1. Clone the Repository and Configure
+After cloning the repository and configuring your `.env` file, choose one of the following methods to run the backend.
+
+### Method A: Docker Compose (Recommended)
+
+This is the simplest way to manage the backend container.
 
 ```bash
-# Clone your project repository
-git clone <your-repo-url>
-cd <your-repo-folder>/backend
-
-# Create the .env file from the example
-cp .env.example .env
-```
-
-**Edit the `.env` file:**
-
-```bash
-nano .env
-```
-
-Update the following values:
--   `JWT_SECRET`: Change this to a long, random, and secret string.
--   `CORS_ORIGIN`: Set this to your frontend domain (e.g., `https://your-domain.com`).
--   `ADMIN_USERNAME` / `ADMIN_PASSWORD`: Change the default admin password.
-
-### 2.2. Run with Docker Compose (Recommended)
-
-This is the simplest way to run the backend.
-
-```bash
-# Build and start the container in detached mode
+# From the /backend directory
 docker compose up --build -d
-
-# To view logs
-docker compose logs -f
-
-# To stop
-docker compose down
 ```
 
-### 2.3. (Alternative) Run with systemd
-
-If you prefer not to use Docker Compose, you can run the Docker container with a systemd service for automatic restarts.
-
-First, build the image: `docker build -t dashboard-api .`
-
-Then, create a systemd service file:
+For enhanced security, you can use the provided security override file:
 
 ```bash
-sudo nano /etc/systemd/system/docker-manager-api.service
+# This applies stricter security settings to the container
+docker-compose -f docker-compose.yml -f ~/docker-compose.security.yml up --build -d
 ```
 
-Paste the following content. **Remember to replace `your-user` and the path to your backend directory.**
+**Common commands:**
+-   View logs: `docker compose logs -f`
+-   Stop the container: `docker compose down`
 
-```ini
-[Unit]
-Description=Docker Manager API Service
-After=docker.service
-Requires=docker.service
+### Method B: Systemd Service
 
-[Service]
-TimeoutStartSec=0
-Restart=always
-ExecStartPre=-/usr/bin/docker exec %n stop
-ExecStartPre=-/usr/bin/docker rm %n
-ExecStart=/usr/bin/docker run --rm --name %n \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /home/your-user/path/to/your/backend/data:/usr/src/app/data \
-  -p 3000:3000 \
-  --env-file /home/your-user/path/to/your/backend/.env \
-  dashboard-api
+This method provides automatic restarts and integrates with the system's service manager. The `vps_setup.sh` script creates a helper script to automate this, but you can do it manually as well.
 
-[Install]
-WantedBy=multi-user.target
-```
+1.  **Build the Docker Image:**
 
-Enable and start the service:
+    ```bash
+    # From the /backend directory
+    docker build -t dashboard-api .
+    ```
 
-```bash
-sudo systemctl enable docker-manager-api.service
-sudo systemctl start docker-manager-api.service
-sudo systemctl status docker-manager-api.service
-```
+2.  **Create the systemd Service File:**
 
----
+    ```bash
+    sudo nano /etc/systemd/system/docker-manager-api.service
+    ```
+
+    Paste the following content, replacing `/path/to/your/backend` with the absolute path to your backend directory.
+
+    ```ini
+    [Unit]
+    Description=Docker Manager API Service
+    After=docker.service
+    Requires=docker.service
+
+    [Service]
+    TimeoutStartSec=0
+    Restart=always
+    ExecStartPre=-/usr/bin/docker stop docker-manager-api
+    ExecStartPre=-/usr/bin/docker rm docker-manager-api
+    ExecStart=/usr/bin/docker run --rm --name docker-manager-api \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v /path/to/your/backend/data:/usr/src/app/data \
+      -p 127.0.0.1:3000:3000 \
+      --env-file /path/to/your/backend/.env \
+      dashboard-api
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+3.  **Enable and Start the Service:**
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable docker-manager-api.service
+    sudo systemctl start docker-manager-api.service
+    ```
+
+    **Common commands:**
+    -   Check status: `sudo systemctl status docker-manager-api`
+    -   View logs: `sudo journalctl -u docker-manager-api -f`
 
 ## Part 3: Nginx Reverse Proxy & SSL
 
-### 3.1. Configure Nginx
+The Nginx configuration should proxy requests to the backend (running on `localhost:3000`) and handle SSL.
 
-Create a new Nginx configuration file for your API domain.
+1.  **Create Nginx Configuration:**
 
-```bash
-sudo nano /etc/nginx/sites-available/api.your-domain.com
-```
+    ```bash
+    sudo nano /etc/nginx/sites-available/api.your-domain.com
+    ```
 
-Paste the following configuration. This sets up the reverse proxy and includes placeholders for SSL.
+    Paste the following configuration:
 
-```nginx
-server {
-    listen 80;
-    server_name api.your-domain.com;
+    ```nginx
+    server {
+        listen 80;
+        server_name api.your-domain.com;
+        server_tokens off; # Hide Nginx version
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        location / {
+            return 301 https://$host$request_uri;
+        }
     }
 
-    # This location is for WebSocket connections (used for logs)
-    location /socket.io/ {
-        proxy_pass http://localhost:3000/socket.io/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+    server {
+        listen 443 ssl http2;
+        server_name api.your-domain.com;
+
+        # Basic SSL settings (Certbot will manage these)
+        ssl_certificate /etc/letsencrypt/live/api.your-domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/api.your-domain.com/privkey.pem;
+
+        # Security Headers (recommended)
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+
+        location / {
+            proxy_pass http://localhost:3000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /socket.io/ {
+            proxy_pass http://localhost:3000/socket.io/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+        }
     }
-}
-```
+    ```
 
-Enable the site by creating a symbolic link:
+2.  **Enable the Site and Get SSL Certificate:**
 
-```bash
-sudo ln -s /etc/nginx/sites-available/api.your-domain.com /etc/nginx/sites-enabled/
-sudo nginx -t # Test configuration
-sudo systemctl restart nginx
-```
+    ```bash
+    # Enable the site
+    sudo ln -s /etc/nginx/sites-available/api.your-domain.com /etc/nginx/sites-enabled/
+    sudo nginx -t
 
-### 3.2. Obtain SSL Certificate with Certbot
+    # Obtain the SSL certificate with Certbot
+    sudo certbot --nginx -d api.your-domain.com --email your@email.com --agree-tos --no-eff-email -n
+    ```
 
-```bash
-# Run Certbot, which will automatically edit your Nginx config for SSL
-sudo certbot --nginx -d api.your-domain.com --email your@email.com --agree-tos --no-eff-email -n
-```
+    Certbot will automatically edit your Nginx file to install the certificate.
 
-Certbot will handle the SSL certificate and renewal automatically. Your API is now accessible at `https://api.your-domain.com`.
+3.  **Reload Nginx:**
 
----
+    ```bash
+    sudo systemctl reload nginx
+    ```
 
-## Part 4: Frontend Deployment (cPanel)
+Your API is now live at `https://api.your-domain.com`.
 
-### 4.1. Build the React App
+## Part 4: Frontend Deployment
 
-On your local machine, navigate to the `frontend` directory.
+The frontend is a static React application. Build it locally and upload the result to any static hosting service (e.g., cPanel, Netlify, Vercel).
 
-First, configure the API URL. Create a `.env.production` file:
+1.  **Configure API URL:**
 
-```bash
-# In frontend/.env.production
-VITE_API_URL=https://api.your-domain.com
-```
+    On your local machine, create a `.env.production` file in the `frontend` directory:
 
-Now, install dependencies and build the static files:
+    ```
+    # In frontend/.env.production
+    VITE_API_URL=https://api.your-domain.com
+    ```
 
-```bash
-npm install
-npm run build
-```
+2.  **Build the App:**
 
-This will create a `dist` directory containing the production-ready static files.
+    ```bash
+    # From the /frontend directory
+    npm install
+    npm run build
+    ```
 
-### 4.2. Deploy to cPanel
+3.  **Deploy:**
 
-1.  **Compress the build folder:** Zip the contents of the `frontend/dist` directory. Name it `build.zip`.
-2.  **Log in to cPanel.**
-3.  Go to **File Manager**.
-4.  Navigate to the `public_html` directory (or a subdirectory, e.g., `public_html/docker-manager`).
-5.  Click **Upload** and select your `build.zip` file.
-6.  Once uploaded, right-click the `build.zip` file and select **Extract**.
-
-Your frontend is now live.
-
-### 4.3. Common Pitfalls
-
--   **CORS Errors:** If the frontend cannot connect to the backend, double-check that `CORS_ORIGIN` in the backend's `.env` file exactly matches your frontend domain (e.g., `https://your-domain.com`), with no trailing slash.
--   **Mixed Content Errors:** Ensure your `VITE_API_URL` uses `https://`.
--   **Routing Issues (404 on refresh):** If you get a 404 error when refreshing a page like `/container/123`, you need to add a `.htaccess` file in the same directory as your `index.html` on cPanel.
-
-Create a `.htaccess` file with the following content:
-
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-```
-
----
-
-## Part 5: DNS Configuration
-
--   **Backend A Record:** In your domain registrar's DNS settings, create an `A` record for `api` that points to `YOUR_VPS_IP`.
--   **Frontend A Record:** Your main domain (`your-domain.com`) should have an `A` record pointing to your cPanel hosting IP address.
-
----
-
-## Final Deployment Checklist
-
-1.  [ ] Secure VPS and create a non-root user.
-2.  [ ] Install Docker, Docker Compose, Nginx, and Certbot on VPS.
-3.  [ ] Configure UFW firewall.
-4.  [ ] Point `api.your-domain.com` DNS A record to VPS IP.
-5.  [ ] Clone backend repo to VPS.
-6.  [ ] Configure and create `.env` file for the backend.
-7.  [ ] Run backend using `docker compose up -d`.
-8.  [ ] Configure Nginx as a reverse proxy for the backend.
-9.  [ ] Secure the API domain with a Let's Encrypt SSL certificate.
-10. [ ] Set the production API URL in the frontend's `.env.production` file.
-11. [ ] Build the frontend app (`npm run build`).
-12. [ ] Upload and extract the `dist` folder contents to cPanel's `public_html`.
-13. [ ] (If needed) Add `.htaccess` file for client-side routing.
-14. [ ] Test the live application.
-
----
-
-## One-Liner Quick Starts
-
--   **Start Backend:** `cd /path/to/backend && docker compose up -d`
--   **Deploy Frontend:** `npm run build && zip -r build.zip dist/* && echo "Upload build.zip to cPanel and extract."`
+    Upload the contents of the `frontend/dist` directory to your hosting provider's file manager (e.g., `public_html` on cPanel).
