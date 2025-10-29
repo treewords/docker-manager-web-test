@@ -427,7 +427,12 @@ async function buildImage(repoUrl, imageName, user, io) {
       remote: remoteUrl,
     };
 
-    docker.buildImage(null, options, (err, stream) => {
+    // The first argument to buildImage must be a readable stream.
+    // For remote builds, this can be an empty stream.
+    const emptyStream = new Readable();
+    emptyStream.push(null);
+
+    docker.buildImage(emptyStream, options, (err, stream) => {
       if (err) {
         logger.error(`Error starting image build for ${imageName}:`, { error: err.message, stack: err.stack });
         if (io) {
