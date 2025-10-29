@@ -407,10 +407,12 @@ async function listVolumes() {
  * @param {string} repoUrl - The URL of the Git repository.
  * @param {string} imageName - The name for the new image.
  * @param {object} user - The user object from the request.
+ * @param {object} io - The socket.io server instance.
  * @returns {Promise<void>}
  */
 async function buildImage(repoUrl, imageName, user, io) {
   return new Promise(async (resolve, reject) => {
+    const userRoom = user.id; // Room specific to the user
     let remoteUrl = repoUrl;
     if (user) {
       const token = await userStore.getGitToken(user.username);
@@ -420,47 +422,61 @@ async function buildImage(repoUrl, imageName, user, io) {
       }
     }
 
-    const emptyStream = new Readable();
-    emptyStream.push(null);
-
     const options = {
       t: imageName,
       remote: remoteUrl,
     };
 
-    const logStream = new Writable({
-      write(chunk, encoding, callback) {
-        const message = chunk.toString();
-        logger.info(`[Build Output - ${imageName}]: ${message}`);
-        if (io) {
-            io.emit('build:log', { imageName, message });
-        }
-        callback();
-      }
-    });
-
-    docker.buildImage(emptyStream, options, (err, stream) => {
+    docker.buildImage(null, options, (err, stream) => {
       if (err) {
-        logger.error(`Error starting image build for ${imageName}:`, err);
+        logger.error(`Error starting image build for ${imageName}:`, { error: err.message, stack: err.stack });
         if (io) {
-            io.emit('build:result', { status: 'error', imageName, username: user.username, message: `Failed to start build: ${err.message}` });
+          io.to(userRoom).emit('build:result', { status: 'error', imageName, message: `Failed to start build: ${err.message}` });
         }
         return reject(new Error(`Failed to start image build for ${imageName}.`));
       }
 
-      stream.pipe(logStream);
+      // Handle the JSON stream from Docker
+      stream.on('data', (chunk) => {
+        try {
+          const data = JSON.parse(chunk.toString());
+          const message = data.stream || data.status;
+          if (message) {
+            logger.info(`[Build Output - ${imageName}]: ${message.trim()}`);
+            if (io) {
+              io.to(userRoom).emit('build:log', { imageName, message: message });
+            }
+          }
+        } catch (e) {
+            logger.warn(`Failed to parse Docker build log chunk for ${imageName}: ${chunk.toString()}`);
+        }
+      });
+
+      stream.on('end', () => {
+        logger.info(`Docker build stream ended for ${imageName}.`);
+      });
 
       docker.modem.followProgress(stream, (finErr, output) => {
         if (finErr) {
-          logger.error(`Error during image build from ${repoUrl}:`, finErr);
+          logger.error(`Error during image build from ${repoUrl}:`, { error: finErr.message, stack: finErr.stack });
           if (io) {
-            io.emit('build:result', { status: 'error', imageName, username: user.username, message: `Build failed: ${finErr.message}` });
+            io.to(userRoom).emit('build:result', { status: 'error', imageName, message: `Build failed: ${finErr.message}` });
           }
           return reject(new Error(`Failed during image build for ${imageName}.`));
         }
+
+        const lastEntry = output[output.length - 1];
+        if (lastEntry.error) {
+            logger.error(`Build failed for ${imageName}: ${lastEntry.error}`);
+            if (io) {
+                io.to(userRoom).emit('build:result', { status: 'error', imageName, message: lastEntry.error });
+            }
+            return reject(new Error(lastEntry.error));
+        }
+
         logger.info(`Successfully built image: ${imageName}`);
         if (io) {
-            io.emit('build:result', { status: 'success', imageName, username: user.username, message: 'Image built successfully.' });
+          io.to(userRoom).emit('build:result', { status: 'success', imageName, message: 'Image built successfully.' });
         }
         resolve(output);
       });

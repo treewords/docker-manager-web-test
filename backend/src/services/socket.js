@@ -46,6 +46,9 @@ function setupWebSocket(server) {
     logger.info(`WebSocket connected: ${socket.id} for user ${socket.user.username}`);
     logAction(socket.user, 'websocket_connect');
 
+    // Join a room based on the user's ID to allow for targeted messaging
+    socket.join(socket.user.id);
+
     let logStream = null;
     let execStream = null;
 
