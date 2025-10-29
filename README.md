@@ -23,13 +23,18 @@ DockerMist transforms Docker container management into a streamlined, intuitive 
 - **Storage Optimization** - Identify and remove unused images to reclaim disk space
 - **Version Control** - Track image versions and manage multiple tags effortlessly
 
+### Nginx Reverse Proxy Management
+- **Automated Configuration** - Easily create and manage Nginx reverse proxies for your other Docker containers.
+- **SSL Integration** - Automatically obtain and renew Let's Encrypt SSL certificates for your proxied domains.
+- **Task-Based System** - A secure, asynchronous queue handles Nginx and Certbot operations without exposing root privileges to the web application.
+
 ### Security First
-- **JWT Authentication** - Industry-standard token-based authentication with secure session management
-- **Encrypted Secrets** - AES-256 encryption for sensitive data like GitHub tokens at rest
-- **CORS Protection** - Granular cross-origin control to prevent unauthorized API access
-- **Audit Logging** - Comprehensive activity logs for security compliance and forensics
-- **Fail2Ban Integration** - Automated intrusion prevention with IP banning
-- **SSL/TLS Ready** - One-command HTTPS setup with Let's Encrypt
+- **Automated VPS Hardening** - One-command script to secure your server, including SSH hardening, firewall configuration, and kernel tuning.
+- **Intrusion Detection** - Pre-configured with OSSEC (Host-based IDS) and AIDE (file integrity monitoring).
+- **Intrusion Prevention** - Fail2Ban is set up with advanced rules to block malicious IPs targeting SSH, Nginx, and web vulnerabilities (XSS, SQLi).
+- **JWT Authentication** - Industry-standard token-based authentication with secure session management.
+- **Encrypted Secrets** - AES-256 encryption for sensitive data like GitHub tokens at rest.
+- **SSL/TLS Ready** - Hardened Nginx configuration with Let's Encrypt for A+ grade SSL.
 
 ### Developer Experience
 - **Responsive Design** - Manage your infrastructure from desktop, tablet, or mobile
@@ -63,60 +68,19 @@ DockerMist transforms Docker container management into a streamlined, intuitive 
 |-------|------------|
 | Frontend | React 18, Vite, TailwindCSS, xterm.js |
 | Backend | Node.js, Express, Socket.io, Dockerode |
-| Security | JWT, bcrypt, crypto, Fail2Ban, OSSEC |
+| Security | JWT, bcrypt, crypto, Fail2Ban, OSSEC, AIDE, UFW |
 | Infrastructure | Docker, Docker Compose, Nginx, Certbot |
 | Documentation | Swagger/OpenAPI 3.0 |
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### Prerequisites
+### 1. Production Deployment (Recommended)
 
-Ensure you have the following installed:
-- **Docker** (v20.10+) and **Docker Compose** (v2.0+)
-- **Node.js** (v14+) and **npm** (v6+)
-- **Git** for repository management
+For production, the best and most secure method is to use the automated setup script on a fresh Ubuntu 22.04 server.
 
-### Local Development
+#### Automated VPS Setup
 
-Get DockerMist running on your machine in under 2 minutes:
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/dockermist.git
-cd dockermist
-
-# Backend setup
-cd backend
-npm install
-cp .env.example .env
-
-# CRITICAL: Edit .env and set secure secrets
-# - JWT_SECRET: openssl rand -base64 32
-# - ENCRYPTION_SECRET: openssl rand -base64 32
-nano .env
-
-# Start the backend (requires Docker socket access)
-sudo npm start
-
-# Frontend setup (new terminal)
-cd ../frontend
-npm install
-npm run dev
-```
-
-**Access the dashboard:** http://localhost:3001
-
-**Default credentials:** `admin` / `changeme` (⚠️ Change immediately)
-
-## 📦 Production Deployment
-
-DockerMist uses a split architecture optimized for production:
-- **Backend:** Dockerized API on a Linux VPS
-- **Frontend:** Static build on any hosting (cPanel, Netlify, Vercel)
-
-### Automated VPS Setup
-
-We provide a comprehensive automation script that handles everything:
+This script handles all security hardening, dependency installation, and configuration for you.
 
 ```bash
 # On your Ubuntu 22.04 VPS as root
@@ -127,219 +91,115 @@ chmod +x vps_setup.sh
 
 **The script automatically:**
 - ✅ Creates a non-root user with SSH key authentication
-- ✅ Hardens SSH (disables root login and password auth)
-- ✅ Configures UFW firewall (ports 22, 80, 443)
+- ✅ Hardens SSH, kernel, and system settings
+- ✅ Configures UFW firewall with rate limiting
 - ✅ Installs Docker, Docker Compose, Nginx, Certbot
 - ✅ Sets up Fail2Ban with advanced XSS/SQLi protection
 - ✅ Installs AIDE and OSSEC for intrusion detection
 - ✅ Enables automatic security updates
-- ✅ Configures Nginx reverse proxy with HTTP/2
-- ✅ Generates free SSL certificate via Let's Encrypt
-- ✅ Applies hardened SSL/TLS settings (TLSv1.2+)
-- ✅ Adds security headers (HSTS, CSP, X-Frame-Options)
+- ✅ Deploys the Nginx reverse proxy with a hardened SSL/TLS configuration
+- ✅ Sets up a cron job for automated Nginx task processing
 
-### Manual Deployment
+After running the script, follow the on-screen instructions to log in as the new user and deploy the application.
 
-For manual setup or customization, see our comprehensive guides:
+### 2. Local Development
 
-- **[Deployment Guide](./DEPLOYMENT.md)** - Step-by-step production setup
-- **[Security Checklist](./SECURITY.md)** - Essential hardening steps
-- **[Advanced Security](./ADVANCED_SECURITY.md)** - Enterprise-grade protection
-- **[Operations Guide](./OPERATIONS.md)** - Backups, monitoring, maintenance
+For local testing and development on your machine.
 
-### Environment Configuration
+#### Prerequisites
 
-**Backend** (`backend/.env`):
+- **Docker** & **Docker Compose**
+- **Node.js** (v14+) & **npm**
+- **Git**
+
+#### Setup Steps
+
 ```bash
-# Application
-NODE_ENV=production
-PORT=3000
+# 1. Clone the repository
+git clone https://github.com/your-username/dockermist.git
+cd dockermist
 
-# Security (CHANGE THESE!)
-JWT_SECRET=your-secure-random-secret-here
-ENCRYPTION_SECRET=your-encryption-key-here
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-strong-password
+# 2. Set up and start the backend
+cd backend
+npm install
+cp .env.example .env
 
-# CORS (must match frontend domain exactly)
-CORS_ORIGIN=https://your-domain.com
+# CRITICAL: Edit .env and set secure secrets
+# - JWT_SECRET: openssl rand -base64 32
+# - ENCRYPTION_SECRET: openssl rand -base64 32
+nano .env
+
+# Start the backend (requires Docker socket access)
+sudo -E node src/app.js
+
+# 3. Set up and start the frontend (in a new terminal)
+cd ../frontend
+npm install
+npm run dev
 ```
 
-**Frontend** (`frontend/.env.production`):
-```bash
-VITE_API_URL=https://api.your-domain.com
-```
+**Access the dashboard:** http://localhost:3001
+**Default credentials:** `admin` / `changeme` (⚠️ Change immediately)
 
 ## 📚 Documentation
 
 | Guide | Description |
 |-------|-------------|
+| [Deployment Guide](./DEPLOYMENT.md) | Manual deployment and custom setups |
+| [Security Guide](./SECURITY.md) | In-depth look at the security features |
+| [Operations Guide](./OPERATIONS.md) | Backups, monitoring, and maintenance tasks |
 | [Testing Guide](./TESTING.md) | API testing with curl and integration tests |
 | [API Documentation](http://localhost:3000/api-docs) | Interactive Swagger UI (when backend is running) |
-| [Operations Guide](./OPERATIONS.md) | Fail2Ban setup, backups, monitoring |
-| [Security Guide](./SECURITY.md) | Essential security checklist |
-| [Advanced Security](./ADVANCED_SECURITY.md) | HIDS, rate limiting, 2FA, vulnerability scanning |
 
-## 🎯 Usage
+## 🔒 Security
 
-### Managing Containers
+DockerMist is built with a defense-in-depth approach. The automated `vps_setup.sh` script configures the following security layers:
 
-1. **Dashboard** - View running containers, system stats, and quick actions
-2. **Containers Page** - Detailed list with status, ports, and lifecycle controls
-3. **Create Container** - Deploy new containers with custom configuration
-4. **Live Logs** - Click any container to view real-time logs in the built-in terminal
+**Host Security:**
+- **OSSEC:** Host-based Intrusion Detection System for real-time log analysis and threat detection.
+- **AIDE:** File integrity monitoring to detect unauthorized changes to critical system files.
+- **Fail2Ban:** Protects against brute-force attacks on SSH and web-based attacks (XSS, SQLi) on Nginx.
+- **UFW Firewall:** Configured with rate limiting to block unauthorized access.
+- **Kernel Hardening:** `sysctl` settings are tuned to protect against common network attacks like IP spoofing and SYN floods.
+- **SSH Hardening:** Disables password authentication and root login, enforcing key-based access.
+- **Automatic Updates:** `unattended-upgrades` is configured to apply security patches automatically.
 
-### Managing Images
-
-1. **Pull Images** - Fetch from Docker Hub or private registries
-2. **Build Images** - Compile from your GitHub repositories (requires PAT)
-3. **Image Cleanup** - Remove unused images to free disk space
-
-### Managing Volumes
-
-1. **Create Volumes** - Provision persistent storage for containers
-2. **Delete Volumes** - Clean up unused volumes safely
-
-### User Settings
-
-Configure your GitHub Personal Access Token (PAT) to enable building images from private repositories.
-
-## 🔒 Security Features
-
-DockerMist implements defense-in-depth security:
-
-**Application Layer:**
-- JWT-based authentication with token expiration
-- Password hashing with bcrypt (10 salt rounds)
-- Encrypted secret storage (AES-256-CBC)
-- CORS protection with whitelist validation
-- Rate limiting on sensitive endpoints
-- Comprehensive audit logging
-
-**Infrastructure Layer:**
-- Nginx reverse proxy with ModSecurity support
-- SSL/TLS with strong cipher suites (A+ rating)
-- HTTP/2 and HSTS preloading
-- Security headers (CSP, X-Frame-Options, X-Content-Type-Options)
-- Fail2Ban with XSS/SQLi pattern detection
-- OSSEC host-based intrusion detection
-- AIDE file integrity monitoring
+**Application Security:**
+- **JWT Authentication:** Secure, token-based authentication.
+- **Encrypted Secrets:** Sensitive data like GitHub tokens are encrypted at rest using AES-256.
+- **CORS Protection:** Whitelists your frontend domain to prevent unauthorized API access.
+- **Nginx Reverse Proxy:** All traffic is routed through a hardened Nginx proxy with A+ grade SSL/TLS.
+- **Security Headers:** Implements HSTS, CSP, and other headers to protect against browser-based attacks.
 
 **Container Security:**
-- Non-root user in Docker container
-- Read-only root filesystem (where possible)
-- Minimal base image (Alpine Linux)
-- Regular vulnerability scanning with Trivy
-- Controlled Docker socket access
+- **Docker Socket Protection:** The application uses a secure, local Unix socket to communicate with Docker, avoiding risky TCP exposure.
+- **Non-Root Container:** The backend container runs as a non-root user.
+- **Resource Limiting:** The provided Docker Compose security override file helps enforce resource and privilege limits.
 
-⚠️ **Critical:** The Docker socket grants root-equivalent access. Never expose it over TCP without TLS.
-
-## 📊 API Endpoints
-
-All API endpoints are documented with Swagger UI at `/api-docs`. Key endpoints:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Authenticate and receive JWT |
-| GET | `/api/health` | Health check (no auth) |
-| GET | `/api/containers` | List all containers |
-| POST | `/api/containers/create` | Create new container |
-| POST | `/api/containers/:id/start` | Start container |
-| POST | `/api/containers/:id/stop` | Stop container |
-| DELETE | `/api/containers/:id` | Remove container |
-| GET | `/api/images` | List all images |
-| POST | `/api/images/pull` | Pull image from registry |
-| POST | `/api/images/build` | Build image from GitHub |
-| DELETE | `/api/images/:id` | Remove image |
-| GET | `/api/volumes` | List all volumes |
-| POST | `/api/volumes/create` | Create volume |
+⚠️ **Critical:** The Docker socket grants root-equivalent access to the host. The architecture is designed for single-host management and assumes the socket is never exposed over the network.
 
 ## 🧪 Testing
 
-Run the comprehensive integration test suite:
+The project includes an integration test script to verify core functionality.
 
 ```bash
-# Backend must be running
+# 1. Make sure the backend is running
 cd backend
-sudo npm start
+sudo -E node src/app.js
 
-# In another terminal, run tests
-cd backend
-chmod +x tests/integration_test.sh
-./tests/integration_test.sh
+# 2. In another terminal, run the test script
+chmod +x test_integration.sh
+./test_integration.sh
 ```
 
-For API testing examples, see [TESTING.md](./TESTING.md).
+For more detailed API testing examples, see [TESTING.md](./TESTING.md).
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-**Development Standards:**
-- Follow existing code style (ESLint/Prettier)
-- Write clear commit messages
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**CORS Errors:**
-- Verify `CORS_ORIGIN` in backend `.env` matches frontend domain exactly
-- No trailing slashes: ✅ `https://example.com` ❌ `https://example.com/`
-
-**Docker Socket Permission Denied:**
-- Add user to docker group: `sudo usermod -aG docker $USER`
-- Log out and back in for changes to take effect
-
-**404 on Frontend Routes:**
-- Add `.htaccess` file for client-side routing (cPanel)
-- Configure rewrite rules for your hosting platform
-
-**SSL Certificate Errors:**
-- Ensure DNS A record points to your VPS IP
-- Wait 2-5 minutes after DNS changes for propagation
-- Check Certbot logs: `sudo journalctl -u certbot`
-
-For more troubleshooting, see our [documentation](#-documentation) or open an issue.
+Contributions are welcome! Please fork the repository, create a feature branch, and open a pull request. See our contributing guidelines for more details.
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 Copyright (c) 2023-2025 DockerMist Contributors
-
-## 🙏 Acknowledgments
-
-Built with these excellent open-source projects:
-- [Docker](https://www.docker.com/) - Container platform
-- [Dockerode](https://github.com/apocas/dockerode) - Docker API client
-- [Express](https://expressjs.com/) - Web framework
-- [React](https://reactjs.org/) - UI library
-- [Socket.io](https://socket.io/) - Real-time communication
-- [xterm.js](https://xtermjs.org/) - Terminal emulator
-- [TailwindCSS](https://tailwindcss.com/) - CSS framework
-
-## 📬 Support
-
-- **Issues:** [GitHub Issues](https://github.com/your-username/dockermist/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/your-username/dockermist/discussions)
-- **Documentation:** [Full Documentation](./DEPLOYMENT.md)
-
----
-
-<div align="center">
-
-**[Documentation](#-documentation)** • **[Quick Start](#-quick-start)** • **[Security](#-security-features)** • **[Contributing](#-contributing)**
-
-Made with ❤️ by the DockerMist community
-
-</div>
