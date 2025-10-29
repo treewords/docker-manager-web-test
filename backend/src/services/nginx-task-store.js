@@ -26,7 +26,14 @@ async function getTasks() {
  * @returns {Promise<void>}
  */
 async function writeTasks(tasks) {
-  await fs.writeFile(tasksFilePath, JSON.stringify(tasks, null, 2), 'utf8');
+  try {
+    // Ensure the directory exists before writing the file
+    await fs.mkdir(path.dirname(tasksFilePath), { recursive: true });
+    await fs.writeFile(tasksFilePath, JSON.stringify(tasks, null, 2), 'utf8');
+  } catch (error) {
+    // The error will be caught and logged by the route handler
+    throw error;
+  }
 }
 
 /**
