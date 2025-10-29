@@ -51,9 +51,10 @@ const BuildLogViewer = ({ imageName, onClose }) => {
     // Listen for build logs
     socket.on('build:log', (data) => {
       if (data.imageName === imageName && data.message) {
-        // Clean up message formatting
-        const cleanedMessage = data.message.replace(/\\n/g, '\r\n').replace(/\\u001b/g, '\x1b');
-        term.write(cleanedMessage);
+        // The message is raw, so we can write it directly.
+        // xterm.js will handle the ANSI escape codes.
+        // We use writeln to ensure proper line endings.
+        term.writeln(data.message);
       }
     });
 
