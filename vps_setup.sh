@@ -182,7 +182,7 @@ setup_firewall_and_dependencies() {
     echo "Installing Nginx, Certbot, HIDS tools, and other dependencies..."
     apt-get install -y nginx certbot python3-certbot-nginx fail2ban aide unattended-upgrades \
                        build-essential make zlib1g-dev libpcre2-dev libevent-dev libssl-dev libsystemd-dev \
-                       auditd audispd-plugins rkhunter lynis apticron logwatch postfix mailutils
+                       auditd audispd-plugins rkhunter lynis apticron logwatch postfix mailutils jq
     echo "All dependencies installed."
 
     echo "--- [5/14] Configuring Firewall (UFW) ---"
