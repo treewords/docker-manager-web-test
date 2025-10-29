@@ -465,13 +465,15 @@ async function buildImage(repoUrl, imageName, user, io) {
           return reject(new Error(`Failed during image build for ${imageName}.`));
         }
 
-        const lastEntry = output[output.length - 1];
-        if (lastEntry.error) {
-            logger.error(`Build failed for ${imageName}: ${lastEntry.error}`);
-            if (io) {
-                io.to(userRoom).emit('build:result', { status: 'error', imageName, message: lastEntry.error });
-            }
-            return reject(new Error(lastEntry.error));
+        if (output && output.length > 0) {
+          const lastEntry = output[output.length - 1];
+          if (lastEntry.error) {
+              logger.error(`Build failed for ${imageName}: ${lastEntry.error}`);
+              if (io) {
+                  io.to(userRoom).emit('build:result', { status: 'error', imageName, message: lastEntry.error });
+              }
+              return reject(new Error(lastEntry.error));
+          }
         }
 
         logger.info(`Successfully built image: ${imageName}`);
