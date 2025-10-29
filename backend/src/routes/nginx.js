@@ -15,7 +15,7 @@ router.get('/tasks', async (req, res) => {
     const tasks = await getTasks();
     res.json(tasks);
   } catch (error) {
-    logger.error({ message: 'Error getting Nginx tasks', error });
+    logger.error('Error getting Nginx tasks', { error: error.message, stack: error.stack });
     res.status(500).send('Server error');
   }
 });
@@ -42,7 +42,7 @@ router.post(
       const newTask = await addTask(req.body);
       res.status(201).json(newTask);
     } catch (error) {
-      logger.error({ message: 'Error adding Nginx task', error });
+      logger.error('Error adding Nginx task', { error: error.message, stack: error.stack });
       res.status(500).send('Server error');
     }
   }
@@ -58,7 +58,7 @@ router.patch('/tasks/:id/delete', async (req, res) => {
         await updateTaskStatusToDelete(req.params.id);
         res.json({ msg: 'Task status updated to deleting' });
     } catch (error) {
-        logger.error({ message: `Error updating Nginx task with id: ${req.params.id}`, error });
+        logger.error(`Error updating Nginx task with id: ${req.params.id}`, { error: error.message, stack: error.stack });
         if (error.message === 'Task not found') {
             return res.status(404).json({ msg: 'Task not found' });
         }
