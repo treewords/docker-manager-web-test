@@ -530,7 +530,7 @@ TASKS_FILE="/var/lib/nginx-tasks/nginx-tasks.json"
 NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
 LOG_FILE="/var/log/nginx-task-processor.log"
-LOCK_FILE="/var/run/nginx-task-processor.lock"
+LOCK_FILE="/var/lib/nginx-tasks/nginx-task-processor.lock"
 # Use the email provided by the user during setup.
 CERTBOT_EMAIL="${LETSENCRYPT_EMAIL}"
 
