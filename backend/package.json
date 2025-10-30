@@ -4,8 +4,12 @@
   "description": "Backend for Docker Manager Dashboard",
   "main": "src/app.js",
   "scripts": {
-    "start": "sudo -E node src/app.js",
-    "dev": "nodemon src/app.js"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write ."
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -13,17 +17,24 @@
     "dockerode": "^3.3.1",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.0",
     "express-validator": "^6.14.2",
     "express-winston": "^4.2.0",
     "jsonwebtoken": "^9.0.0",
     "morgan": "^1.10.0",
+    "sequelize": "^6.37.7",
     "socket.io": "^4.5.4",
+    "sqlite3": "^5.1.7",
     "swagger-ui-express": "^4.6.0",
     "uuid": "^9.0.0",
     "winston": "^3.8.2",
     "yamljs": "^0.3.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "nodemon": "^2.0.20",
+    "prettier": "^3.6.2"
   }
 }

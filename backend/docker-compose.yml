@@ -3,9 +3,11 @@ services:
     build: .
     container_name: docker-manager-api
     restart: unless-stopped
-    # It is recommended to use the docker-compose.security.yml override for production
-    # to run the container as a non-root user.
-    # user: "${UID:-1000}:${GID:-1000}"
+    # Run the container as a non-root user.
+    # The UID and GID should match the user on the host that has access to the docker socket.
+    user: "${UID:-1000}:${GID:-999}"
+    group_add:
+      - "${DOCKER_GID:-999}"
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

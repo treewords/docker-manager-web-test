@@ -1,12 +1,22 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const userStore = require('../services/user-store');
 const { logAction } = require('../config/logger');
 
 const router = express.Router();
 
+// Rate limiter for login attempts to prevent brute-force attacks
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts from this IP, please try again after 15 minutes',
+});
+
 // POST /api/auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
   const { username, password } = req.body;
 
   if (!username || !password) {

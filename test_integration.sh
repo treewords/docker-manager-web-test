@@ -5,6 +5,10 @@ ADMIN_USER="admin"
 ADMIN_PASS="changeme"
 TEST_CONTAINER_NAME="temp-test-nginx-$(date +%s)"
 
+# Wait for the backend to be ready
+echo "--- Waiting for backend to start... ---"
+sleep 5
+
 echo "--- Logging in ---"
 TOKEN=$(curl -s -X POST $API_URL/auth/login \
   -H "Content-Type: application/json" \

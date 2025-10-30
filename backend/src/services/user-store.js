@@ -1,54 +1,14 @@
-const fs = require('fs').promises;
-const path = require('path');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { logger } = require('../config/logger');
-
-const dbPath = path.join(__dirname, '../../data/users.json');
-
-/**
- * Ensures the data directory and users.json file exist.
- */
-async function ensureDbFile() {
-  try {
-    await fs.access(dbPath);
-  } catch (error) {
-    // File does not exist, create it with an empty array
-    await fs.mkdir(path.dirname(dbPath), { recursive: true });
-    await fs.writeFile(dbPath, JSON.stringify([]));
-    logger.info('Created users.json because it did not exist.');
-  }
-}
-
-/**
- * Reads all users from the JSON file.
- * @returns {Promise<Array>} A promise that resolves to an array of users.
- */
-async function readUsers() {
-  await ensureDbFile();
-  const data = await fs.readFile(dbPath, 'utf8');
-  if (!data) {
-    return [];
-  }
-  return JSON.parse(data);
-}
-
-/**
- * Writes users to the JSON file.
- * @param {Array} users - The array of users to write.
- */
-async function writeUsers(users) {
-  await ensureDbFile();
-  await fs.writeFile(dbPath, JSON.stringify(users, null, 2));
-}
+const User = require('../models/user');
 
 /**
  * Initializes the user store. Creates a default admin user if no users exist.
  */
 async function init() {
-  await ensureDbFile();
-  const users = await readUsers();
-  if (users.length === 0) {
+  const userCount = await User.count();
+  if (userCount === 0) {
     logger.info('No users found. Creating default admin user.');
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
     const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
@@ -68,8 +28,7 @@ async function init() {
  * @returns {Promise<Object|undefined>} The user object or undefined if not found.
  */
 async function findUser(username) {
-  const users = await readUsers();
-  return users.find(user => user.username === username);
+  return User.findOne({ where: { username } });
 }
 
 /**
@@ -79,21 +38,16 @@ async function findUser(username) {
  * @returns {Promise<Object>} The newly created user object.
  */
 async function addUser(username, password) {
-  const users = await readUsers();
-  const existingUser = users.find(user => user.username === username);
+  const existingUser = await findUser(username);
   if (existingUser) {
     throw new Error('User already exists.');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const newUser = {
-    id: Date.now().toString(),
+  const newUser = await User.create({
     username,
     password: hashedPassword,
-  };
-
-  users.push(newUser);
-  await writeUsers(users);
+  });
   return newUser;
 }
 
@@ -155,20 +109,17 @@ function decrypt(data, salt) {
  * @param {string} token - The plain-text GitHub token.
  */
 async function saveGitToken(username, token) {
-  const users = await readUsers();
-  const userIndex = users.findIndex(user => user.username === username);
-  if (userIndex === -1) {
+  const user = await findUser(username);
+  if (!user) {
     throw new Error('User not found.');
   }
 
-  // Ensure the user has a salt for encryption.
-  if (!users[userIndex].salt) {
-    users[userIndex].salt = crypto.randomBytes(16).toString('hex');
+  if (!user.salt) {
+    user.salt = crypto.randomBytes(16).toString('hex');
   }
-  const salt = users[userIndex].salt;
 
-  users[userIndex].gitToken = encrypt(token, salt);
-  await writeUsers(users);
+  user.gitToken = encrypt(token, user.salt);
+  await user.save();
   logger.info(`Git token saved for user '${username}'.`);
 }
 
@@ -190,7 +141,6 @@ async function getGitToken(username) {
     return null;
   }
 }
-
 
 module.exports = {
   init,
