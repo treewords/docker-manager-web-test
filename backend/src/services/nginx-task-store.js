@@ -1,44 +1,11 @@
-const fs = require('fs/promises');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
-
-const tasksFilePath = process.env.NGINX_TASKS_FILE_PATH || path.join(__dirname, '..', '..', 'data', 'nginx-tasks.json');
+const NginxTask = require('../models/nginxTask');
 
 /**
- * Reads all Nginx tasks from the JSON file.
+ * Reads all Nginx tasks from the database.
  * @returns {Promise<Array>} A promise that resolves to an array of tasks.
  */
 async function getTasks() {
-  try {
-    const data = await fs.readFile(tasksFilePath, 'utf8');
-    // If the file is empty or just whitespace, return an empty array.
-    if (!data.trim()) {
-      return [];
-    }
-    return JSON.parse(data);
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return []; // Return an empty array if the file doesn't exist
-    }
-    // Re-throw other errors to be handled by the caller.
-    throw error;
-  }
-}
-
-/**
- * Writes tasks to the JSON file.
- * @param {Array} tasks - The array of tasks to write.
- * @returns {Promise<void>}
- */
-async function writeTasks(tasks) {
-  try {
-    // Ensure the directory exists before writing the file
-    await fs.mkdir(path.dirname(tasksFilePath), { recursive: true });
-    await fs.writeFile(tasksFilePath, JSON.stringify(tasks, null, 2), 'utf8');
-  } catch (error) {
-    // The error will be caught and logged by the route handler
-    throw error;
-  }
+  return NginxTask.findAll();
 }
 
 /**
@@ -47,16 +14,7 @@ async function writeTasks(tasks) {
  * @returns {Promise<object>} The newly created task.
  */
 async function addTask(taskData) {
-  const tasks = await getTasks();
-  const newTask = {
-    id: uuidv4(),
-    ...taskData,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  };
-  tasks.push(newTask);
-  await writeTasks(tasks);
-  return newTask;
+  return NginxTask.create(taskData);
 }
 
 /**
@@ -65,13 +23,12 @@ async function addTask(taskData) {
  * @returns {Promise<void>}
  */
 async function updateTaskStatusToDelete(taskId) {
-    const tasks = await getTasks();
-    const taskIndex = tasks.findIndex(task => task.id === taskId);
-    if (taskIndex === -1) {
-        throw new Error('Task not found');
-    }
-    tasks[taskIndex].status = 'deleting';
-    await writeTasks(tasks);
+  const task = await NginxTask.findByPk(taskId);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+  task.status = 'deleting';
+  await task.save();
 }
 
 module.exports = {

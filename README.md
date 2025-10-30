@@ -127,10 +127,13 @@ cp .env.example .env
 # CRITICAL: Edit .env and set secure secrets
 # - JWT_SECRET: openssl rand -base64 32
 # - ENCRYPTION_SECRET: openssl rand -base64 32
+# - UID: id -u
+# - GID: id -g
+# - DOCKER_GID: getent group docker | cut -d: -f3
 nano .env
 
-# Start the backend (requires Docker socket access)
-sudo -E node src/app.js
+# Start the backend
+docker-compose up --build
 
 # 3. Set up and start the frontend (in a new terminal)
 cd ../frontend
@@ -172,11 +175,11 @@ DockerMist is built with a defense-in-depth approach. The automated `vps_setup.s
 - **Security Headers:** Implements HSTS, CSP, and other headers to protect against browser-based attacks.
 
 **Container Security:**
-- **Docker Socket Protection:** The application uses a secure, local Unix socket to communicate with Docker, avoiding risky TCP exposure.
-- **Non-Root Container:** The backend container runs as a non-root user.
-- **Resource Limiting:** The provided Docker Compose security override file helps enforce resource and privilege limits.
+- **Docker Socket Protection:** The application communicates with the Docker engine via a local Unix socket. Access is granted by adding the container's user to the host's `docker` group, avoiding the need to run the container as root.
+- **Non-Root Container:** The backend container runs as a non-root user (`appuser`), reducing the attack surface.
+- **Principle of Least Privilege:** The container is configured with the minimal necessary permissions to perform its tasks.
 
-⚠️ **Critical:** The Docker socket grants root-equivalent access to the host. The architecture is designed for single-host management and assumes the socket is never exposed over the network.
+⚠️ **Critical:** The Docker socket grants root-equivalent access to the host. Ensure that only trusted users are added to the `docker` group on the host machine.
 
 ## 🧪 Testing
 

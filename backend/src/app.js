@@ -9,7 +9,9 @@ const YAML = require('yamljs');
 
 const { setupWebSocket } = require('./services/socket');
 const { logger } = require('./config/logger');
+const sequelize = require('./config/database');
 const userStore = require('./services/user-store');
+const errorMiddleware = require('./middleware/errorMiddleware');
 
 // --- App Initialization ---
 const app = express();
@@ -42,20 +44,17 @@ const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // --- Error Handling ---
-app.use((err, req, res, next) => {
-  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-  res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal Server Error',
-    },
-  });
-});
+app.use(errorMiddleware);
 
 // --- Server Startup ---
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
+    logger.info('Connecting to the database...');
+    await sequelize.sync({ force: false }); // Use { force: true } to drop and re-create tables
+    logger.info('Database connected.');
+
     logger.info('Initializing user store...');
     await userStore.init();
     logger.info('User store initialized.');

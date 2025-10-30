@@ -13,11 +13,24 @@ WORKDIR /usr/src/app
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY docs ./docs
 COPY . .
+
+# Create a non-root user and switch to it
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Create data directory
+RUN mkdir -p /usr/src/app/data
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+USER root
+
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Switch to root user to have permission for the docker socket
-USER root
+# Set entrypoint
+ENTRYPOINT ["entrypoint.sh"]
 
 # Run the application
 CMD ["node", "src/app.js"]
