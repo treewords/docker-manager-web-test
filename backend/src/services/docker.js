@@ -538,33 +538,6 @@ async function unpauseContainer(containerId) {
         throw new Error(`Failed to unpause container ${containerId}.`);
     }
 }
-module.exports = {
-  listContainers,
-  getContainer,
-  startContainer,
-  stopContainer,
-  restartContainer,
-  removeContainer,
-  createContainer,
-  pullImage,
-  streamLogs,
-  executeCommand,
-  listImages,
-  buildImage,
-  listNetworks,
-  listVolumes,
-  createVolume,
-  removeVolume,
-  removeImage,
-  pauseContainer,
-  unpauseContainer,
-  createNetwork,
-  inspectNetwork,
-  connectContainerToNetwork,
-  disconnectContainerFromNetwork,
-  removeNetwork,
-};
-
 /**
  * Creates a new Docker network.
  * @param {Object} options - The network creation options (e.g., { Name: 'my-network', Driver: 'bridge' }).
@@ -650,3 +623,29 @@ async function removeNetwork(networkId) {
         throw new Error(`Failed to remove network ${networkId}.`);
     }
 }
+module.exports = {
+  listContainers,
+  getContainer,
+  startContainer,
+  stopContainer,
+  restartContainer,
+  removeContainer,
+  createContainer,
+  pullImage,
+  streamLogs,
+  executeCommand,
+  listImages,
+  buildImage,
+  listNetworks,
+  listVolumes,
+  createVolume,
+  removeVolume,
+  removeImage,
+  pauseContainer,
+  unpauseContainer,
+  createNetwork,
+  inspectNetwork,
+  connectContainerToNetwork,
+  disconnectContainerFromNetwork,
+  removeNetwork,
+};
