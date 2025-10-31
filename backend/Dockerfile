@@ -14,8 +14,23 @@ COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY docs ./docs
 COPY . .
 
+# Allow the docker gid to be passed in at build time
+ARG DOCKER_GID=999
+
 # Create a non-root user and switch to it
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# This is a robust way to add the user to the docker group,
+# regardless of whether the GID is already in use.
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    DOCKER_GROUP_NAME=$(getent group $DOCKER_GID | cut -d: -f1) && \
+    if [ -z "$DOCKER_GROUP_NAME" ]; then \
+        DOCKER_GROUP_NAME=docker && \
+        addgroup -g $DOCKER_GID $DOCKER_GROUP_NAME; \
+    fi && \
+    adduser appuser $DOCKER_GROUP_NAME
+
+# Install su-exec
+RUN apk add --no-cache su-exec
 
 # Create data directory
 RUN mkdir -p /usr/src/app/data
