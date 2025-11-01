@@ -18,6 +18,8 @@ const app = express();
 const server = http.createServer(app);
 
 // --- Middleware ---
+// Trust the first proxy
+app.set('trust proxy', 1);
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
