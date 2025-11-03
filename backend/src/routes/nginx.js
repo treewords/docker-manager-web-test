@@ -45,7 +45,7 @@ router.post(
         }
         return true;
       }),
-    body('proxyPass', 'Proxy pass is required').not().isEmpty(),
+    body('proxyPass', 'A valid Proxy Pass URL is required').isURL(),
     body('enableSSL', 'Enable SSL is required').isBoolean(),
   ],
   async (req, res) => {
