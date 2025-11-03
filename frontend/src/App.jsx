@@ -10,7 +10,6 @@ import NetworksPage from './pages/NetworksPage';
 import NetworkDetailsPage from './pages/NetworkDetailsPage';
 import VolumesPage from './pages/VolumesPage';
 import UserSettingsPage from './pages/UserSettingsPage';
-import NginxPage from './pages/NginxPage';
 
 // A wrapper for routes that require authentication.
 function PrivateRoute({ children }) {
@@ -28,7 +27,6 @@ function App() {
       <Route path="/networks" element={<PrivateRoute><NetworksPage /></PrivateRoute>} />
       <Route path="/networks/:id" element={<PrivateRoute><NetworkDetailsPage /></PrivateRoute>} />
       <Route path="/volumes" element={<PrivateRoute><VolumesPage /></PrivateRoute>} />
-      <Route path="/nginx" element={<PrivateRoute><NginxPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
       {/* Default route */}
       <Route path="*" element={<Navigate to="/dashboard" />} />

@@ -64,9 +64,6 @@ const Sidebar = ({ deviceType }) => {
         <NavLink to="/volumes" className={navLinkClasses} title="Volumes">
           <Database className={iconClasses} /> {!collapsed && 'Volumes'}
         </NavLink>
-        <NavLink to="/nginx" className={navLinkClasses} title="Nginx">
-          <Server className={iconClasses} /> {!collapsed && 'Nginx'}
-        </NavLink>
       </nav>
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
         <NavLink to="/settings" className={navLinkClasses} title="User Settings">

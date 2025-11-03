@@ -39,7 +39,6 @@ app.use('/api/networks', require('./routes/networks'));
 app.use('/api/volumes', require('./routes/volumes'));
 app.use('/api/health', require('./routes/health'));
 app.use('/api/user', require('./routes/user'));
-app.use('/api/nginx', require('./routes/nginx'));
 
 // --- Swagger API Documentation ---
 const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));

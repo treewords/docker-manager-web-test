@@ -23,11 +23,6 @@ DockerMist transforms Docker container management into a streamlined, intuitive 
 - **Storage Optimization** - Identify and remove unused images to reclaim disk space
 - **Version Control** - Track image versions and manage multiple tags effortlessly
 
-### Nginx Reverse Proxy Management
-- **Automated Configuration** - Easily create and manage Nginx reverse proxies for your other Docker containers.
-- **SSL Integration** - Automatically obtain and renew Let's Encrypt SSL certificates for your proxied domains.
-- **Task-Based System** - A secure, asynchronous queue handles Nginx and Certbot operations without exposing root privileges to the web application.
-
 ### Security First
 - **Automated VPS Hardening** - One-command script to secure your server, including SSH hardening, firewall configuration, and kernel tuning.
 - **Intrusion Detection** - Pre-configured with OSSEC (Host-based IDS) and AIDE (file integrity monitoring).
@@ -98,7 +93,6 @@ chmod +x vps_setup.sh
 - ✅ Installs AIDE and OSSEC for intrusion detection
 - ✅ Enables automatic security updates
 - ✅ Deploys the Nginx reverse proxy with a hardened SSL/TLS configuration
-- ✅ Sets up a cron job for automated Nginx task processing
 
 After running the script, follow the on-screen instructions to log in as the new user and deploy the application.
 
