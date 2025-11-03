@@ -1,4 +1,7 @@
+const fs = require('fs').promises;
 const NginxTask = require('../models/nginxTask');
+
+const lockPath = '/var/lock/nginx-manager.lock';
 
 /**
  * Reads all Nginx tasks from the database.
@@ -14,7 +17,26 @@ async function getTasks() {
  * @returns {Promise<object>} The newly created task.
  */
 async function addTask(taskData) {
-  return NginxTask.create(taskData);
+  let lockHandle;
+  try {
+    // Acquire lock
+    lockHandle = await fs.open(lockPath, 'wx');
+
+    // Create the task in the database
+    const task = await NginxTask.create(taskData);
+    return task;
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      throw new Error('Operation locked. Please try again later.');
+    }
+    throw error; // Re-throw other errors
+  } finally {
+    // Release lock
+    if (lockHandle) {
+      await lockHandle.close();
+      await fs.unlink(lockPath).catch(() => {}); // Ignore errors on unlink
+    }
+  }
 }
 
 /**

@@ -45,6 +45,21 @@ The `vps_setup.sh` script automates the hardening of the host server.
     -   `Content-Security-Policy` (CSP) to mitigate XSS attacks.
 -   **Restricted CORS Origin:** The `CORS_ORIGIN` in your `.env` file must be set to the exact domain of your frontend to prevent other websites from making requests to your API.
 
+### Atomic and Secure Nginx Configuration Management
+
+The Nginx management feature is secured against command injection, corrupted configurations, and race conditions through a robust, multi-step process handled by the `/usr/local/bin/process_nginx_tasks.sh` script:
+
+1.  **Strict Input Validation:** All domain names are validated at the API level using a strict regular expression to prevent path traversal and command injection attacks. A second validation layer exists within the processing script itself.
+2.  **Atomic File Operations:**
+    -   New Nginx configurations are first written to a temporary (`.tmp`) file.
+    -   The script tests the *entire* Nginx configuration using `nginx -t` *before* activating the new site.
+    -   Only if the test is successful is the temporary file atomically moved into place, and the site is enabled. This prevents a corrupted or invalid file from ever being loaded by Nginx.
+3.  **Automatic Rollback:** If the `nginx -t` configuration test fails at any point (either during creation or after a failed Certbot operation), the script automatically rolls back the changes by removing the invalid configuration file and symlink.
+4.  **Automated Backups:** Before any existing Nginx configuration file is deleted, a timestamped backup is created in `/var/backups/nginx/`, allowing for manual restoration if needed.
+5.  **Secure Subprocess Execution:** The script avoids direct shell execution with user input. It uses validated domain names only as file paths, not as command arguments.
+6.  **Detailed Logging:** All actions, including shell command outputs (`stdout` and `stderr`), are logged to `/var/log/nginx-task-processor.log`, providing a clear audit trail for debugging and security analysis.
+7.  **Concurrency Control:** A lock file mechanism (`flock`) ensures that only one instance of the processing script can run at a time, preventing race conditions.
+
 ### Vulnerability Management
 
 -   **Rate Limiting:** The `vps_setup.sh` script does not configure application-level rate limiting by default, but it is a recommended practice. You can add it to your `backend/src/app.js` to protect against brute-force attacks on the login endpoint.

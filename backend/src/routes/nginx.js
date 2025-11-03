@@ -6,6 +6,15 @@ const { logger } = require('../config/logger');
 const router = express.Router();
 
 /**
+ * Validates a domain name.
+ * @param {string} d The domain to validate.
+ * @returns {boolean} True if the domain is valid, false otherwise.
+ */
+function validateDomain(d) {
+  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+$/.test(d);
+}
+
+/**
  * @route   GET /api/nginx/tasks
  * @desc    Get all Nginx tasks
  * @access  Private
@@ -28,7 +37,14 @@ router.get('/tasks', async (req, res) => {
 router.post(
   '/tasks',
   [
-    body('domain', 'Domain is required').not().isEmpty(),
+    body('domain', 'A valid domain is required')
+      .not().isEmpty()
+      .custom((value) => {
+        if (!validateDomain(value)) {
+          throw new Error('Invalid domain format');
+        }
+        return true;
+      }),
     body('proxyPass', 'Proxy pass is required').not().isEmpty(),
     body('enableSSL', 'Enable SSL is required').isBoolean(),
   ],
