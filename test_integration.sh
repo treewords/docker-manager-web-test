@@ -7,7 +7,7 @@ TEST_CONTAINER_NAME="temp-test-nginx-$(date +%s)"
 
 # Wait for the backend to be ready
 echo "--- Waiting for backend to start... ---"
-sleep 5
+sleep 15
 
 echo "--- Logging in ---"
 TOKEN=$(curl -s -X POST $API_URL/auth/login \
