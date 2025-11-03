@@ -13,13 +13,21 @@ const CreateNginxDomainModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    let finalValue = value;
+    if (name === 'domain') {
+      // Sanitize the domain input by removing http(s):// protocol
+      finalValue = value.replace(/^(https?:\/\/)?/, '');
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === 'checkbox' ? checked : finalValue,
     }));
   };
 
   const handleSubmit = async () => {
+    setError(''); // Clear previous errors
     if (!formData.domain.trim() || !formData.proxyPass.trim()) {
       setError('Domain and Proxy Pass URL cannot be empty.');
       return;
@@ -31,8 +39,16 @@ const CreateNginxDomainModal = ({ isOpen, onClose, onSuccess }) => {
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to add Nginx task.');
-      toast.error('Failed to add Nginx task.');
+      // Check for validation errors from the backend
+      if (err.response && err.response.data && err.response.data.errors) {
+        const errorMessages = err.response.data.errors.map(e => e.msg).join(' ');
+        setError(errorMessages);
+        toast.error(errorMessages);
+      } else {
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to add Nginx task.';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     }
   };
 
