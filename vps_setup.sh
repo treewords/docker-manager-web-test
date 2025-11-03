@@ -31,7 +31,7 @@ set -u
 
 # Configure kernel security parameters
 setup_kernel_hardening() {
-    echo "--- [2/14] Hardening kernel security parameters ---"
+    echo "--- [2/13] Hardening kernel security parameters ---"
     
     cat > /etc/sysctl.d/99-security-hardening.conf << 'EOF'
 # IP Spoofing protection
@@ -93,7 +93,7 @@ EOF
 
 # Populates the user and SSH hardening logic
 setup_user_and_ssh() {
-    echo "--- [3/14] Creating user and hardening SSH ---"
+    echo "--- [3/13] Creating user and hardening SSH ---"
     if id "$NEW_USER" &>/dev/null; then
         echo "User $NEW_USER already exists. Skipping user creation."
     else
@@ -154,7 +154,7 @@ setup_user_and_ssh() {
 
 # Installs all required packages and configures the firewall
 setup_firewall_and_dependencies() {
-    echo "--- [4/14] Installing dependencies ---"
+    echo "--- [4/13] Installing dependencies ---"
     apt-get update
 
     echo "Pre-configuring packages to be non-interactive..."
@@ -185,7 +185,7 @@ setup_firewall_and_dependencies() {
                        auditd audispd-plugins rkhunter lynis apticron logwatch postfix mailutils jq
     echo "All dependencies installed."
 
-    echo "--- [5/14] Configuring Firewall (UFW) ---"
+    echo "--- [5/13] Configuring Firewall (UFW) ---"
     
     # Configure UFW rate limiting for SSH
     ufw --force reset
@@ -204,7 +204,7 @@ setup_firewall_and_dependencies() {
 
 # Configures Fail2Ban with advanced rules for SSH, Nginx, and web attacks
 setup_fail2ban() {
-    echo "--- [6/14] Configuring Fail2Ban for advanced threat detection ---"
+    echo "--- [6/13] Configuring Fail2Ban for advanced threat detection ---"
 
     echo "Creating Fail2Ban filters for Nginx..."
     cat > /etc/fail2ban/filter.d/nginx-xss.conf << 'EOF'
@@ -261,7 +261,7 @@ EOF
 
 # Configures unattended-upgrades for automatic security patches and initializes AIDE
 setup_system_hardening() {
-    echo "--- [7/14] Hardening system with AIDE and automatic updates ---"
+    echo "--- [7/13] Hardening system with AIDE and automatic updates ---"
 
     echo "Configuring automatic security updates..."
     cat > /etc/apt/apt.conf.d/20auto-upgrades << EOF
@@ -294,7 +294,7 @@ EOF
 
 # Installs and configures OSSEC HIDS from source
 setup_ossec() {
-    echo "--- [8/14] Installing OSSEC Host-based Intrusion Detection System ---"
+    echo "--- [8/13] Installing OSSEC Host-based Intrusion Detection System ---"
 
     local ossec_version="3.7.0"
     local ossec_url="https://github.com/ossec/ossec-hids/archive/refs/tags/${ossec_version}.tar.gz"
@@ -354,7 +354,7 @@ EOF
 
 # Creates a valid Nginx configuration that is ready for Certbot
 setup_nginx() {
-    echo "--- [9/14] Configuring Nginx reverse proxy ---"
+    echo "--- [9/13] Configuring Nginx reverse proxy ---"
 
     echo "Creating Nginx configuration for $API_DOMAIN..."
     cat > /etc/nginx/sites-available/$API_DOMAIN << EOF
@@ -401,7 +401,7 @@ EOF
 
 # Automates SSL certificate generation using Certbot
 setup_ssl() {
-    echo "--- [10/14] Generating SSL certificate with Certbot ---"
+    echo "--- [10/13] Generating SSL certificate with Certbot ---"
 
     echo "Waiting 10 seconds for DNS propagation..."
     sleep 10
@@ -418,7 +418,7 @@ setup_ssl() {
 
 # Applies advanced security settings to the Certbot-generated Nginx config (FIXED VERSION)
 harden_nginx_ssl() {
-    echo "--- [11/14] Applying advanced Nginx hardening ---"
+    echo "--- [11/13] Applying advanced Nginx hardening ---"
 
     local nginx_conf="/etc/nginx/sites-available/$API_DOMAIN"
     local letsencrypt_options="/etc/letsencrypt/options-ssl-nginx.conf"
@@ -510,224 +510,9 @@ EOF
     rm -f "${letsencrypt_options}.backup"
 }
 
-# Sets up the cron job for processing Nginx tasks
-setup_nginx_cron() {
-    echo "--- [12/14] Setting up Nginx task processor cron job ---"
-
-    echo "Installing and configuring the hardened Nginx task processor..."
-
-    # Create the script in a system-wide location using a heredoc.
-    # The 'EOF' marker is unquoted to allow ${LETSENCRYPT_EMAIL} expansion.
-    cat > /usr/local/bin/process_nginx_tasks.sh << EOF
-#!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status.
-set -o pipefail # The return value of a pipeline is the status of the last command to exit with a non-zero status.
-
-# --- Configuration ---
-TASKS_FILE="/var/lib/nginx-tasks/nginx-tasks.json"
-NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
-NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
-LOG_FILE="/var/log/nginx-task-processor.log"
-LOCK_FILE="/var/lib/nginx-tasks/nginx-task-processor.lock"
-BACKUP_DIR="/var/backups/nginx"
-# Use the email provided by the user during setup.
-CERTBOT_EMAIL="${LETSENCRYPT_EMAIL}"
-
-# --- Initialization ---
-mkdir -p "\$(dirname "\$LOG_FILE")"
-mkdir -p "\$BACKUP_DIR"
-mkdir -p "\$(dirname "\$LOCK_FILE")"
-
-# --- Lock File ---
-exec 200>"\$LOCK_FILE"
-flock -n 200 || { echo "Another instance is running. Exiting."; exit 1; }
-trap 'flock -u 200; rm -f "\$LOCK_FILE"' EXIT
-
-# --- Logging ---
-log() {
-    echo "\$(date '+%Y-%m-%d %H:%M:%S') - \$1" >> "\$LOG_FILE"
-}
-
-# --- Validation ---
-is_valid_domain() {
-    local domain=\$1
-    if [[ "\$domain" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+$ ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# --- Error Handling ---
-handle_error() {
-    local task_id=\$1
-    local error_message=\$2
-    log "ERROR for task \$task_id: \$error_message"
-    jq "map(if .id == \\"\$task_id\\" then .status = \\"failed\\" | .error = \\"\$error_message\\" else . end)" "\$TASKS_FILE" > "\$TASKS_FILE.tmp" && mv "\$TASKS_FILE.tmp" "\$TASKS_FILE"
-}
-
-# --- Main Processing Logic ---
-log "Starting Nginx task processing."
-if [ ! -f "\$TASKS_FILE" ]; then
-    log "Task file not found: \$TASKS_FILE. Exiting."
-    exit 0
-fi
-
-# --- Process Pending Tasks (Creations) ---
-jq -c '.[] | select(.status == "pending")' "\$TASKS_FILE" | while read -r task; do
-    TASK_ID=\$(echo "\$task" | jq -r '.id')
-    DOMAIN=\$(echo "\$task" | jq -r '.domain')
-    PROXY_PASS=\$(echo "\$task" | jq -r '.proxyPass')
-    ENABLE_SSL=\$(echo "\$task" | jq -r '.enableSSL')
-
-    trap 'handle_error "\$TASK_ID" "An unexpected error occurred during creation."; trap - ERR; continue' ERR
-
-    log "Processing PENDING task \$TASK_ID for domain \$DOMAIN"
-
-    if ! is_valid_domain "\$DOMAIN"; then
-        handle_error "\$TASK_ID" "Invalid domain format rejected by script-level validation."
-        continue
-    fi
-
-    CONFIG_FILE="\$NGINX_SITES_AVAILABLE/\$DOMAIN"
-    CONFIG_FILE_TMP="\${CONFIG_FILE}.tmp"
-
-    if [ -f "\$CONFIG_FILE" ]; then
-        handle_error "\$TASK_ID" "Nginx configuration file already exists for this domain."
-        continue
-    fi
-
-    log "Generating Nginx config for \$DOMAIN into temporary file."
-    cat > "\$CONFIG_FILE_TMP" <<EOL
-server {
-    listen 80;
-    server_name \$DOMAIN;
-    location / {
-        proxy_pass \$PROXY_PASS;
-        proxy_set_header Host \\\$host;
-        proxy_set_header X-Real-IP \\\$remote_addr;
-        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\\$scheme;
-    }
-}
-EOL
-
-    log "Moving temporary config to \$CONFIG_FILE and enabling site."
-    sudo mv "\$CONFIG_FILE_TMP" "\$CONFIG_FILE"
-    sudo ln -sf "\$CONFIG_FILE" "\$NGINX_SITES_ENABLED/"
-
-    log "Testing Nginx configuration..."
-    if ! sudo nginx -t &>> "\$LOG_FILE"; then
-        log "Nginx configuration test failed for \$DOMAIN. Rolling back."
-        sudo rm -f "\$NGINX_SITES_ENABLED/\$DOMAIN"
-        sudo rm -f "\$CONFIG_FILE"
-        handle_error "\$TASK_ID" "Nginx configuration test failed. Rolled back changes."
-        continue
-    fi
-    log "Nginx configuration test successful."
-
-    if [ "\$ENABLE_SSL" = "true" ]; then
-        log "Requesting SSL certificate for \$DOMAIN"
-        if ! sudo certbot --nginx -d "\$DOMAIN" --non-interactive --agree-tos -m "\$CERTBOT_EMAIL" &>> "\$LOG_FILE"; then
-            log "Certbot failed for \$DOMAIN. Rolling back."
-            sudo rm -f "\$NGINX_SITES_ENABLED/\$DOMAIN"
-            sudo rm -f "\$CONFIG_FILE"
-            sudo nginx -t &>> "\$LOG_FILE" || log "WARNING: Nginx config is broken after certbot failure."
-            handle_error "\$TASK_ID" "Certbot failed to obtain SSL certificate. Rolled back changes."
-            continue
-        fi
-        log "SSL certificate obtained successfully for \$DOMAIN."
-    fi
-
-    log "Reloading Nginx..."
-    if ! (sudo systemctl reload nginx || sudo nginx -s reload) &>> "\$LOG_FILE"; then
-        handle_error "\$TASK_ID" "Nginx reload command failed. The configuration is valid but the service could not be reloaded."
-        continue
-    fi
-    log "Nginx reloaded successfully."
-
-    jq "map(if .id == \\"\$TASK_ID\\" then .status = \\"active\\" else . end)" "\$TASKS_FILE" > "\$TASKS_FILE.tmp" && mv "\$TASKS_FILE.tmp" "\$TASKS_FILE"
-    log "Updated task \$TASK_ID status to 'active'."
-
-    trap - ERR
-done
-
-# --- Process Deletion Tasks ---
-jq -c '.[] | select(.status == "deleting")' "\$TASKS_FILE" | while read -r task; do
-    TASK_ID=\$(echo "\$task" | jq -r '.id')
-    DOMAIN=\$(echo "\$task" | jq -r '.domain')
-
-    trap 'handle_error "\$TASK_ID" "An unexpected error occurred during deletion."; trap - ERR; continue' ERR
-
-    log "Processing DELETING task \$TASK_ID for domain \$DOMAIN"
-
-    CONFIG_FILE="\$NGINX_SITES_AVAILABLE/\$DOMAIN"
-
-    if [ -f "\$CONFIG_FILE" ]; then
-        BACKUP_FILE="\$BACKUP_DIR/\$(date +%s)_\${DOMAIN}.conf.backup"
-        log "Backing up \$CONFIG_FILE to \$BACKUP_FILE"
-        sudo cp "\$CONFIG_FILE" "\$BACKUP_FILE" &>> "\$LOG_FILE"
-    fi
-
-    log "Disabling site: \$DOMAIN"
-    sudo rm -f "\$NGINX_SITES_ENABLED/\$DOMAIN" &>> "\$LOG_FILE"
-    log "Removing site configuration: \$CONFIG_FILE"
-    sudo rm -f "\$CONFIG_FILE" &>> "\$LOG_FILE"
-
-    if sudo certbot certificates -d "\$DOMAIN" &>> "\$LOG_FILE" | grep -q "Found the following certs"; then
-        log "Deleting SSL certificate for \$DOMAIN"
-        sudo certbot delete --cert-name "\$DOMAIN" --non-interactive &>> "\$LOG_FILE"
-    fi
-
-    log "Testing Nginx configuration after deletion..."
-    if ! sudo nginx -t &>> "\$LOG_FILE"; then
-        log "Nginx configuration test failed after deleting \$DOMAIN. Attempting to restore from backup."
-        if [ -f "\$BACKUP_FILE" ]; then
-            log "Restoring backup for \$DOMAIN."
-            sudo cp "\$BACKUP_FILE" "\$CONFIG_FILE" &>> "\$LOG_FILE"
-            sudo ln -sf "\$CONFIG_FILE" "\$NGINX_SITES_ENABLED/"
-        fi
-        handle_error "\$TASK_ID" "Nginx configuration test failed after deletion. Attempted to restore backup."
-        continue
-    fi
-
-    log "Reloading Nginx after deletion..."
-    (sudo systemctl reload nginx || sudo nginx -s reload) &>> "\$LOG_FILE"
-
-    jq "map(select(.id != \\"\$TASK_ID\\"))" "\$TASKS_FILE" > "\$TASKS_FILE.tmp" && mv "\$TASKS_FILE.tmp" "\$TASKS_FILE"
-    log "Removed task \$TASK_ID from task file."
-
-    trap - ERR
-done
-
-log "Finished Nginx task processing."
-exit 0
-EOF
-
-    chmod +x /usr/local/bin/process_nginx_tasks.sh
-
-    # Create necessary directories and files with correct permissions
-    mkdir -p /var/lib/nginx-tasks
-    touch /var/lib/nginx-tasks/nginx-tasks.json
-    chown -R "$NEW_USER:$NEW_USER" /var/lib/nginx-tasks
-    touch /var/log/nginx-task-processor.log
-    chown "$NEW_USER:$NEW_USER" /var/log/nginx-task-processor.log
-
-    # Grant passwordless sudo for specific, restricted commands for enhanced security
-    SUDOERS_FILE="/etc/sudoers.d/nginx-processor"
-    echo "Defaults:$NEW_USER !requiretty" > "$SUDOERS_FILE"
-    echo "$NEW_USER ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx, /usr/sbin/nginx -s reload, /usr/sbin/nginx -t, /usr/bin/certbot, /bin/mv /etc/nginx/sites-available/*.tmp /etc/nginx/sites-available/*, /bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/, /bin/rm -f /etc/nginx/sites-enabled/*, /bin/rm -f /etc/nginx/sites-available/*, /bin/cp /etc/nginx/sites-available/* /var/backups/nginx/*" >> "$SUDOERS_FILE"
-    chmod 440 "$SUDOERS_FILE"
-
-    # Set up the cron job to run as the new user
-    (crontab -u "$NEW_USER" -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/process_nginx_tasks.sh") | crontab -u "$NEW_USER" -
-
-    echo "Nginx task processor cron job has been set up to run every 5 minutes."
-}
-
 # Setup Docker security and resource limits
 setup_docker_security() {
-    echo "--- [13/14] Configuring Docker security settings ---"
+    echo "--- [12/13] Configuring Docker security settings ---"
     
     # Create Docker daemon configuration
     mkdir -p /etc/docker
@@ -765,8 +550,6 @@ version: '3.8'
 services:
   api:
     user: "${UID:-1000}:${GID:-1000}"
-    volumes:
-      - /var/lib/nginx-tasks:/usr/src/app/data
     security_opt:
       - no-new-privileges:true
     read_only: false
@@ -799,7 +582,7 @@ EOF
 
 # Creates a helper script for setting up the application with systemd
 create_systemd_helper_script() {
-    echo "--- [14/14] Creating systemd helper script ---"
+    echo "--- [13/13] Creating systemd helper script ---"
 
     cat > "/home/$NEW_USER/setup_systemd.sh" << 'SCRIPT_EOF'
 #!/bin/bash
@@ -847,7 +630,6 @@ ExecStartPre=-/usr/bin/docker rm docker-manager-api
 ExecStart=/usr/bin/docker run --rm --name docker-manager-api \\
   --user __APP_USER_ID__:__APP_GROUP_ID__ \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  -v /var/lib/nginx-tasks:/usr/src/app/data \\
   -p 127.0.0.1:3000:3000 \\
   --env-file __BACKEND_PATH__/.env \\
   dashboard-api
@@ -995,7 +777,6 @@ main() {
     setup_nginx
     setup_ssl
     harden_nginx_ssl
-    setup_nginx_cron
     setup_docker_security
     create_systemd_helper_script
     final_summary

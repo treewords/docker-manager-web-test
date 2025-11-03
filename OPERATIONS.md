@@ -56,33 +56,11 @@ sudo aide.wrapper --update
 sudo mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
 ```
 
-## 2. Nginx Reverse Proxy Management
-
-The application includes a feature to manage Nginx reverse proxies for other Docker containers. This is handled by a cron job that runs every 5 minutes.
-
-### 2.1. How It Works
-
-1.  **API Request:** When you create a new reverse proxy in the DockerMist UI, the backend API writes a "pending" task to `/var/lib/nginx-tasks/nginx-tasks.json`.
-2.  **Cron Job:** A cron job running as your non-root user executes the `/usr/local/bin/process_nginx_tasks.sh` script.
-3.  **Task Processing:** The script reads the JSON file, generates the Nginx configuration, uses Certbot to obtain an SSL certificate (if requested), and reloads Nginx.
-4.  **Status Update:** The task status in the JSON file is updated to "active".
-
-### 2.2. Monitoring the Nginx Task Processor
-
-If you encounter issues with the reverse proxy feature, you can check the log file for the task processor:
-
-```bash
-# View the log for the Nginx task processor
-tail -f /var/log/nginx-task-processor.log
-```
-
-This log will show you the script's activity, including any errors it encountered while processing tasks.
-
-## 3. Backups
+## 2. Backups
 
 Regular backups are critical for disaster recovery.
 
-### 3.1. Application Data
+### 2.1. Application Data
 
 The most important data is in the `backend/data` directory, which contains `users.json` and logs.
 
@@ -95,7 +73,7 @@ tar -czvf ~/backups/backend_data_$(date +%F).tar.gz /path/to/your/backend/data
 
 This command should be automated with a cron job.
 
-### 3.2. System Configuration
+### 2.2. System Configuration
 
 It is also wise to back up critical system configurations:
 
@@ -107,9 +85,9 @@ sudo cp -r /etc/nginx ~/backups/nginx_$(date +%F)
 sudo cp -r /etc/letsencrypt ~/backups/letsencrypt_$(date +%F)
 ```
 
-## 4. System Monitoring
+## 3. System Monitoring
 
-### 4.1. Application Logs
+### 3.1. Application Logs
 
 You can view the backend application logs to diagnose errors.
 
@@ -126,7 +104,7 @@ docker compose logs -f
 sudo journalctl -u docker-manager-api.service -f
 ```
 
-### 4.2. System Logs
+### 3.2. System Logs
 
 Other useful logs to monitor:
 
@@ -141,7 +119,7 @@ tail -f /var/log/auth.log
 tail -f /var/log/ufw.log
 ```
 
-### 4.3. Health Check
+### 3.3. Health Check
 
 You can use an external uptime monitoring service to ping the API's health check endpoint. This ensures your service is online and responsive.
 
