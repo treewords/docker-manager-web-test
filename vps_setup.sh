@@ -155,6 +155,14 @@ setup_user_and_ssh() {
 # Installs all required packages and configures the firewall
 setup_firewall_and_dependencies() {
     echo "--- [4/13] Installing dependencies ---"
+
+    echo "Checking for and waiting on existing apt-get locks..."
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
+        echo "Waiting for other package management process to finish..."
+        sleep 5
+    done
+    echo "No active apt-get locks found. Proceeding with installation."
+
     apt-get update
 
     echo "Pre-configuring packages to be non-interactive..."
