@@ -21,7 +21,6 @@ const ContainersPage = () => {
       setError('');
     } catch (err) {
       setError('Failed to fetch containers.');
-      console.error(err);
     } finally {
       // This ensures the initial loading indicator is turned off and never shown again.
       if (isLoading) {

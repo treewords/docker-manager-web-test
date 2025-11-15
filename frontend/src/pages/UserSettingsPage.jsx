@@ -17,7 +17,7 @@ const UserSettingsPage = () => {
       const decodedToken = jwtDecode(token);
       username = decodedToken.user.username;
     } catch (error) {
-      console.error("Failed to decode token:", error);
+      // Token decode failed - user will see username as "Unknown"
     }
   }
 

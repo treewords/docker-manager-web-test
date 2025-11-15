@@ -9,7 +9,6 @@ export const getGitTokenStatus = async () => {
     const response = await api.get('/user/settings/git-token-status');
     return response.data;
   } catch (error) {
-    console.error('Error fetching Git token status:', error);
     throw error;
   }
 };
@@ -24,7 +23,6 @@ export const saveGitToken = async (token) => {
     const response = await api.post('/user/settings/git-token', { token });
     return response.data;
   } catch (error) {
-    console.error('Error saving Git token:', error);
     throw error;
   }
 };

@@ -28,7 +28,6 @@ const ActionButtons = ({ containerId, containerState, onActionSuccess }) => {
       await actionMap[action]();
       onActionSuccess(); // Refresh the container list for all actions
     } catch (err) {
-      console.error(`Failed to ${action} container ${containerId}`, err);
       alert(`Error: ${err.response?.data?.message || err.message}`);
     }
   };

@@ -17,7 +17,6 @@ const LoginPage = () => {
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to log in. Please check your credentials.');
-      console.error(err);
     }
   };
 

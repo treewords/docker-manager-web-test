@@ -21,7 +21,6 @@ const ImagesPage = () => {
       setError('');
     } catch (err) {
       setError('Failed to fetch images. Is the backend running?');
-      console.error(err);
     } finally {
       setLoading(false);
     }

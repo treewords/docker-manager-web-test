@@ -59,8 +59,25 @@ const app = express();
 const server = http.createServer(app);
 
 // --- Middleware ---
-// Trust the first proxy (configure specific IPs in production)
-app.set('trust proxy', 1);
+// Configure trust proxy with specific IPs for security
+// In production, set TRUST_PROXY in .env to specific proxy IPs (comma-separated)
+// Example: TRUST_PROXY=127.0.0.1,::1,10.0.0.0/8
+const trustProxyConfig = process.env.TRUST_PROXY;
+if (trustProxyConfig) {
+  if (trustProxyConfig === 'true' || trustProxyConfig === '1') {
+    logger.warn('SECURITY WARNING: trust proxy is set to trust all proxies. Consider specifying exact IPs.');
+    app.set('trust proxy', true);
+  } else {
+    // Parse comma-separated IPs/subnets
+    const trustedProxies = trustProxyConfig.split(',').map(ip => ip.trim());
+    app.set('trust proxy', trustedProxies);
+    logger.info(`Trust proxy configured for: ${trustedProxies.join(', ')}`);
+  }
+} else {
+  // Default: trust only loopback (localhost)
+  app.set('trust proxy', 'loopback');
+  logger.info('Trust proxy: defaulting to loopback only');
+}
 
 // Security headers with helmet.js
 app.use(helmet({

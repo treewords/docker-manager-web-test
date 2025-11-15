@@ -9,7 +9,6 @@ export const getNginxTasks = async () => {
     const response = await api.get('/nginx/tasks');
     return response.data;
   } catch (error) {
-    console.error('Error fetching Nginx tasks:', error);
     throw error;
   }
 };
@@ -24,7 +23,6 @@ export const addNginxTask = async (taskData) => {
     const response = await api.post('/nginx/tasks', taskData);
     return response.data;
   } catch (error) {
-    console.error('Error adding Nginx task:', error);
     throw error;
   }
 };
@@ -38,7 +36,6 @@ export const updateNginxTaskStatusToDelete = async (taskId) => {
   try {
     await api.patch(`/nginx/tasks/${taskId}/delete`);
   } catch (error) {
-    console.error('Error updating Nginx task status:', error);
     throw error;
   }
 };

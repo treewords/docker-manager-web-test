@@ -18,7 +18,6 @@ const NetworksPage = () => {
       setError('');
     } catch (err) {
       setError('Failed to fetch networks. Is the backend running?');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -34,7 +33,6 @@ const NetworksPage = () => {
       setIsModalOpen(false);
       fetchNetworks(); // Refresh the list
     } catch (error) {
-      console.error('Failed to create network:', error);
       setError('Failed to create network.');
     }
   };
@@ -45,7 +43,6 @@ const NetworksPage = () => {
         await removeNetwork(networkId);
         fetchNetworks(); // Refresh the list
       } catch (error) {
-        console.error('Failed to remove network:', error);
         setError('Failed to remove network.');
       }
     }

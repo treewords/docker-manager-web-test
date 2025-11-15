@@ -36,7 +36,14 @@ const BuildLogViewer = ({ imageName, onClose }) => {
     term.writeln('');
 
     // Establish WebSocket connection
-    const token = localStorage.getItem('token');
+    // Use sessionStorage for consistency with AuthContext
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      term.writeln('\x1b[31mError: No authentication token found. Please login again.\x1b[0m');
+      setStatus('Authentication Error');
+      return;
+    }
+
     const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
       auth: {
         token: token,

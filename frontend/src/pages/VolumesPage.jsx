@@ -17,7 +17,6 @@ const VolumesPage = () => {
       setError('');
     } catch (err) {
       setError('Failed to fetch volumes. Is the backend running?');
-      console.error(err);
     } finally {
       setLoading(false);
     }

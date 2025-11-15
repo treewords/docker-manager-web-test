@@ -19,7 +19,6 @@ const CreateContainerModal = ({ onClose, onSuccess }) => {
         const volumes = await getVolumes();
         setAvailableVolumes(volumes);
       } catch (err) {
-        console.error("Failed to fetch volumes", err);
         // Do not set a user-facing error here as it might be confusing
       }
     };

@@ -38,7 +38,6 @@ const NetworkDetailsPage = () => {
       setError('');
     } catch (err) {
       setError('Failed to fetch network details.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -55,7 +54,6 @@ const NetworkDetailsPage = () => {
       fetchNetworkDetails(); // Refresh details
     } catch (err) {
       setError('Failed to connect container.');
-      console.error(err);
     }
   };
 
@@ -65,7 +63,6 @@ const NetworkDetailsPage = () => {
       fetchNetworkDetails(); // Refresh details
     } catch (err) {
       setError('Failed to disconnect container.');
-      console.error(err);
     }
   };
 
