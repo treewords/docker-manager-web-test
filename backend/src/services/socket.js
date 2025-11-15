@@ -20,8 +20,9 @@ function getIO() {
 function setupWebSocket(server) {
   io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || '*',
+      origin: process.env.CORS_ORIGIN,
       methods: ['GET', 'POST'],
+      credentials: true
     },
   });
 
@@ -53,34 +54,17 @@ function setupWebSocket(server) {
     let execStream = null;
 
 
+    // DISABLED: Container exec functionality is disabled for security reasons
+    // Arbitrary command execution in containers poses significant security risks
+    // including container escape, privilege escalation, and system compromise
     socket.on('exec', async ({ containerId, command }) => {
-      logger.info(`User ${socket.user.username} executing command in ${containerId}: ${command}`);
-      logAction(socket.user, 'container_exec_start', { containerId, command });
+      logger.warn(`User ${socket.user.username} attempted to execute command in ${containerId} (BLOCKED): ${command}`);
+      logAction(socket.user, 'container_exec_blocked', { containerId, command });
 
-      try {
-        const { stream, exec } = await dockerService.executeCommand(containerId, command);
-        execStream = stream; // Store the stream to be able to disconnect
-
-        stream.on('data', (chunk) => {
-          socket.emit('exec:data', chunk.toString('utf8'));
-        });
-
-        stream.on('end', () => {
-          socket.emit('exec:end', 'Command execution finished.');
-          logAction(socket.user, 'container_exec_end', { containerId, command });
-        });
-
-        socket.on('exec:data', (data) => {
-            if (execStream) {
-                execStream.write(data);
-            }
-        });
-
-      } catch (error) {
-        logger.error(`Error executing command in ${containerId}:`, error);
-        logAction(socket.user, 'container_exec_failed', { containerId, command, error: error.message });
-        socket.emit('exec:error', `Error executing command: ${error.message}`);
-      }
+      socket.emit('exec:error',
+        'Container exec functionality has been disabled for security reasons. ' +
+        'Please use docker exec directly on the host if you need to run commands in containers.'
+      );
     });
 
     // Listener for container log streaming requests
