@@ -50,9 +50,44 @@ function setupWebSocket(server) {
     // Join a room based on the user's ID to allow for targeted messaging
     socket.join(socket.user.id);
 
-    let logStream = null;
-    let execStream = null;
+    // Track all active streams for this socket (prevents memory leaks)
+    const activeStreams = new Set();
+    const streamTimeouts = new Map();
 
+    // Helper function to clean up a stream
+    const cleanupStream = (stream) => {
+      if (stream && activeStreams.has(stream)) {
+        try {
+          stream.destroy();
+        } catch (err) {
+          logger.error('Error destroying stream:', err);
+        }
+        activeStreams.delete(stream);
+
+        // Clear associated timeout
+        const timeout = streamTimeouts.get(stream);
+        if (timeout) {
+          clearTimeout(timeout);
+          streamTimeouts.delete(stream);
+        }
+      }
+    };
+
+    // Helper function to clean up all streams
+    const cleanupAllStreams = () => {
+      activeStreams.forEach(stream => {
+        try {
+          stream.destroy();
+        } catch (err) {
+          logger.error('Error destroying stream during cleanup:', err);
+        }
+      });
+      activeStreams.clear();
+
+      // Clear all timeouts
+      streamTimeouts.forEach(timeout => clearTimeout(timeout));
+      streamTimeouts.clear();
+    };
 
     // DISABLED: Container exec functionality is disabled for security reasons
     // Arbitrary command execution in containers poses significant security risks
@@ -72,21 +107,33 @@ function setupWebSocket(server) {
       logger.info(`User ${socket.user.username} requested logs for container ${containerId}`);
       logAction(socket.user, 'container_logs_start', { containerId });
 
-      // If already streaming, stop the old stream first
-      if (logStream) {
-        logStream.destroy();
-        logStream = null;
-      }
-
       try {
-        logStream = await dockerService.streamLogs(containerId, (logChunk) => {
+        const stream = await dockerService.streamLogs(containerId, (logChunk) => {
           socket.emit('log', logChunk);
         });
 
+        // Track this stream
+        activeStreams.add(stream);
+
+        // Set timeout for idle streams (5 minutes)
+        const timeout = setTimeout(() => {
+          logger.info(`Log stream for container ${containerId} timed out after 5 minutes`);
+          cleanupStream(stream);
+          socket.emit('log:end', 'Log stream timed out due to inactivity.');
+        }, 5 * 60 * 1000);
+
+        streamTimeouts.set(stream, timeout);
+
         // Handle stream ending or errors
-        logStream.on('end', () => {
-            socket.emit('log:end', 'Log stream finished.');
-            logAction(socket.user, 'container_logs_end', { containerId });
+        stream.on('end', () => {
+          socket.emit('log:end', 'Log stream finished.');
+          logAction(socket.user, 'container_logs_end', { containerId });
+          cleanupStream(stream);
+        });
+
+        stream.on('error', (err) => {
+          logger.error(`Log stream error for ${containerId}:`, err);
+          cleanupStream(stream);
         });
 
       } catch (error) {
@@ -100,15 +147,9 @@ function setupWebSocket(server) {
     socket.on('disconnect', () => {
       logger.info(`WebSocket disconnected: ${socket.id}`);
       logAction(socket.user, 'websocket_disconnect');
-      // Clean up the log stream if it exists
-      if (logStream) {
-        logStream.destroy();
-        logStream = null;
-      }
-      if (execStream) {
-        execStream.destroy();
-        execStream = null;
-      }
+
+      // Clean up all active streams for this socket
+      cleanupAllStreams();
     });
   });
 }

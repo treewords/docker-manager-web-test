@@ -13,6 +13,7 @@ const {
   dockerOperationsLimiter,
   containerCreateLimiter
 } = require('../middleware/rateLimiting');
+const { validateContainerIdParam } = require('../middleware/paramValidation');
 
 const router = express.Router();
 
@@ -21,6 +22,21 @@ router.use(auth);
 
 // Apply rate limiting to all container operations
 router.use(dockerOperationsLimiter);
+
+// Validate container ID for all routes with :id parameter
+router.param('id', (req, res, next, id) => {
+  try {
+    // Container IDs should be 12 or 64 character hex strings
+    if (!/^[a-f0-9]{12}$|^[a-f0-9]{64}$/.test(id)) {
+      const error = new Error('Invalid container ID format');
+      error.status = 400;
+      throw error;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // GET /api/containers -> list containers
 router.get('/', async (req, res, next) => {

@@ -13,6 +13,7 @@ const {
   imagePullLimiter,
   imageBuildLimiter
 } = require('../middleware/rateLimiting');
+const { validateResourceIdParam } = require('../middleware/paramValidation');
 
 const router = express.Router();
 
@@ -21,6 +22,26 @@ router.use(auth);
 
 // Apply rate limiting to all image operations
 router.use(dockerOperationsLimiter);
+
+// Validate image ID/name for routes with :id parameter
+router.param('id', (req, res, next, id) => {
+  try {
+    if (!id || typeof id !== 'string') {
+      const error = new Error('Image ID is required');
+      error.status = 400;
+      throw error;
+    }
+    // Image IDs/names: alphanumeric, hyphens, underscores, dots, colons, slashes
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,255}$/.test(id)) {
+      const error = new Error('Invalid image ID format');
+      error.status = 400;
+      throw error;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // GET /api/images -> list images
 router.get('/', async (req, res, next) => {

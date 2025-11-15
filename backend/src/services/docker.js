@@ -161,10 +161,17 @@ async function restartContainer(containerId) {
 async function removeContainer(containerId) {
   try {
     const container = getContainer(containerId);
-    await container.remove({ force: true }); // Force removal even if running
+
+    // Check if container is running first
+    const inspect = await container.inspect();
+    if (inspect.State.Running) {
+      throw new Error('Container is running. Please stop it before removing.');
+    }
+
+    await container.remove({ force: false });
   } catch (error) {
     logger.error(`Error removing container ${containerId}:`, error);
-    throw new Error(`Failed to remove container ${containerId}.`);
+    throw new Error(error.message || `Failed to remove container ${containerId}.`);
   }
 }
 
@@ -498,7 +505,8 @@ async function buildImage(repoUrl, imageName, user, io) {
 async function removeImage(imageId) {
     try {
         const image = docker.getImage(imageId);
-        await image.remove({ force: true });
+        // Don't force removal - let Docker check if image is in use
+        await image.remove({ force: false });
     } catch (error) {
         logger.error(`Error removing image ${imageId}:`, error);
         if (error.statusCode === 404) {

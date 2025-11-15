@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+const helmet = require('helmet');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
@@ -60,6 +61,24 @@ const server = http.createServer(app);
 // --- Middleware ---
 // Trust the first proxy (configure specific IPs in production)
 app.set('trust proxy', 1);
+
+// Security headers with helmet.js
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // For Swagger UI
+      scriptSrc: ["'self'", "'unsafe-inline'"], // For Swagger UI
+      imgSrc: ["'self'", 'data:', 'https:']
+    }
+  },
+  crossOriginEmbedderPolicy: false, // For Swagger UI
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 
 // CORS - strict origin checking (no wildcard allowed)
 app.use(cors({

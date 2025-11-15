@@ -4,6 +4,73 @@ const { logger } = require('../config/logger');
 const User = require('../models/user');
 
 /**
+ * Validates password complexity
+ * @param {string} password - The password to validate
+ * @throws {Error} If password doesn't meet complexity requirements
+ */
+function validatePasswordComplexity(password) {
+  if (!password || typeof password !== 'string') {
+    throw new Error('Password is required');
+  }
+
+  if (password.length < 12) {
+    throw new Error('Password must be at least 12 characters long');
+  }
+
+  // Check for at least one uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    throw new Error('Password must contain at least one uppercase letter');
+  }
+
+  // Check for at least one lowercase letter
+  if (!/[a-z]/.test(password)) {
+    throw new Error('Password must contain at least one lowercase letter');
+  }
+
+  // Check for at least one number
+  if (!/[0-9]/.test(password)) {
+    throw new Error('Password must contain at least one number');
+  }
+
+  // Check for at least one special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    throw new Error('Password must contain at least one special character');
+  }
+
+  // Check against common passwords
+  const commonPasswords = ['password', 'Password123!', 'Admin123!', '12345678', 'qwerty'];
+  if (commonPasswords.some(common => password.toLowerCase().includes(common.toLowerCase()))) {
+    throw new Error('Password is too common. Please choose a more unique password');
+  }
+
+  return true;
+}
+
+/**
+ * Generates a random strong password
+ * @returns {string} A strong random password
+ */
+function generateRandomPassword() {
+  const length = 24;
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let password = '';
+
+  // Ensure at least one of each required character type
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // Uppercase
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // Lowercase
+  password += '0123456789'[Math.floor(Math.random() * 10)]; // Number
+  password += '!@#$%^&*()_+-=[]{}|'[Math.floor(Math.random() * 18)]; // Special char
+
+  // Fill the rest
+  for (let i = password.length; i < length; i++) {
+    password += charset[Math.floor(Math.random() * charset.length)];
+  }
+
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+/**
  * Initializes the user store. Creates a default admin user if no users exist.
  */
 async function init() {
@@ -11,10 +78,29 @@ async function init() {
   if (userCount === 0) {
     logger.info('No users found. Creating default admin user.');
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
+    let adminPassword = process.env.ADMIN_PASSWORD;
 
+    // Generate random password if not set or if set to default insecure value
     if (!adminPassword || adminPassword === 'changeme') {
-        logger.warn('Default admin password is not set or is insecure. Please set ADMIN_PASSWORD in your .env file.');
+      adminPassword = generateRandomPassword();
+      logger.warn('ADMIN_PASSWORD was not set or was insecure. Generated random password for admin user.');
+      logger.warn('═══════════════════════════════════════════════════════════');
+      logger.warn(`GENERATED ADMIN PASSWORD: ${adminPassword}`);
+      logger.warn('═══════════════════════════════════════════════════════════');
+      logger.warn('IMPORTANT: Save this password immediately! It will not be shown again.');
+      logger.warn('Change this password after first login using the user settings page.');
+    } else {
+      // Validate provided password
+      try {
+        validatePasswordComplexity(adminPassword);
+      } catch (error) {
+        logger.error(`ADMIN_PASSWORD does not meet complexity requirements: ${error.message}`);
+        logger.error('Generating a random password instead.');
+        adminPassword = generateRandomPassword();
+        logger.warn('═══════════════════════════════════════════════════════════');
+        logger.warn(`GENERATED ADMIN PASSWORD: ${adminPassword}`);
+        logger.warn('═══════════════════════════════════════════════════════════');
+      }
     }
 
     await addUser(adminUsername, adminPassword);
@@ -41,6 +127,11 @@ async function addUser(username, password) {
   const existingUser = await findUser(username);
   if (existingUser) {
     throw new Error('User already exists.');
+  }
+
+  // Validate password complexity (skip for initial admin user)
+  if (username !== process.env.ADMIN_USERNAME) {
+    validatePasswordComplexity(password);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
