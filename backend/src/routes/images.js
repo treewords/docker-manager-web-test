@@ -3,11 +3,24 @@ const dockerService = require('../services/docker');
 const auth = require('../middleware/auth');
 const { logAction } = require('../config/logger');
 const { getIO } = require('../services/socket');
+const {
+  validateImageName,
+  validateGitRepository,
+  validateDockerName
+} = require('../middleware/validation');
+const {
+  dockerOperationsLimiter,
+  imagePullLimiter,
+  imageBuildLimiter
+} = require('../middleware/rateLimiting');
 
 const router = express.Router();
 
 // All routes in this file are protected
 router.use(auth);
+
+// Apply rate limiting to all image operations
+router.use(dockerOperationsLimiter);
 
 // GET /api/images -> list images
 router.get('/', async (req, res, next) => {
@@ -20,59 +33,91 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/images/pull
-router.post('/pull', async (req, res, next) => {
+router.post('/pull', imagePullLimiter, async (req, res, next) => {
   const { imageName } = req.body;
-  if (!imageName) {
-    return res.status(400).json({ message: 'Image name is required.' });
-  }
 
   try {
-    logAction(req.user, 'pull_image_start', { imageName });
+    // Validate image name
+    if (!imageName) {
+      const error = new Error('Image name is required');
+      error.status = 400;
+      throw error;
+    }
+
+    const validatedImageName = validateImageName(imageName);
+
+    logAction(req.user, 'pull_image_start', { imageName: validatedImageName });
+
     // This can take a while, so we don't wait for it to finish here.
     // The client should ideally get feedback via WebSocket or another mechanism.
     // For this implementation, we'll just acknowledge the request.
-    dockerService.pullImage(imageName)
+    dockerService.pullImage(validatedImageName)
       .then(() => {
-        logAction(req.user, 'pull_image_success', { imageName });
+        logAction(req.user, 'pull_image_success', { imageName: validatedImageName });
       })
       .catch(error => {
-        logAction(req.user, 'pull_image_failed', { imageName, error: error.message });
+        logAction(req.user, 'pull_image_failed', { imageName: validatedImageName, error: error.message });
       });
 
-    res.status(202).json({ message: `Image pull for '${imageName}' started.` });
+    res.status(202).json({ message: `Image pull for '${validatedImageName}' started.` });
 
   } catch (error) {
-    // This catch block will likely not be hit for pull errors,
-    // as the pull operation is async. It's here for synchronous errors.
+    // Ensure validation errors return 400 status
+    if (!error.status) {
+      error.status = 400;
+    }
     next(error);
   }
 });
 
 // POST /api/images/build
-router.post('/build', async (req, res, next) => {
+router.post('/build', imageBuildLimiter, async (req, res, next) => {
   const { repoUrl, imageName, tag } = req.body;
-  if (!repoUrl || !imageName) {
-    return res.status(400).json({ message: 'Repository URL and image name are required.' });
-  }
-
-  const fullImageName = tag ? `${imageName}:${tag}` : imageName;
-  const io = getIO();
 
   try {
-    logAction(req.user, 'build_image_start', { repoUrl, imageName: fullImageName });
+    // Validate repository URL
+    if (!repoUrl) {
+      const error = new Error('Repository URL is required');
+      error.status = 400;
+      throw error;
+    }
+    const validatedRepoUrl = validateGitRepository(repoUrl);
+
+    // Validate image name
+    if (!imageName) {
+      const error = new Error('Image name is required');
+      error.status = 400;
+      throw error;
+    }
+    // For build, we validate the base name part (without tag)
+    validateDockerName(imageName, 'Image name');
+
+    // Validate tag if provided
+    if (tag) {
+      validateDockerName(tag, 'Image tag');
+    }
+
+    const fullImageName = tag ? `${imageName}:${tag}` : imageName;
+    const io = getIO();
+
+    logAction(req.user, 'build_image_start', { repoUrl: validatedRepoUrl, imageName: fullImageName });
 
     // Asynchronous operation, don't wait for it to finish
-    dockerService.buildImage(repoUrl, fullImageName, req.user, io)
+    dockerService.buildImage(validatedRepoUrl, fullImageName, req.user, io)
       .then(() => {
-        logAction(req.user, 'build_image_success', { repoUrl, imageName: fullImageName });
+        logAction(req.user, 'build_image_success', { repoUrl: validatedRepoUrl, imageName: fullImageName });
       })
       .catch(error => {
-        logAction(req.user, 'build_image_failed', { repoUrl, imageName: fullImageName, error: error.message });
+        logAction(req.user, 'build_image_failed', { repoUrl: validatedRepoUrl, imageName: fullImageName, error: error.message });
       });
 
-    res.status(202).json({ message: `Image build for '${fullImageName}' started from '${repoUrl}'.` });
+    res.status(202).json({ message: `Image build for '${fullImageName}' started from '${validatedRepoUrl}'.` });
 
   } catch (error) {
+    // Ensure validation errors return 400 status
+    if (!error.status) {
+      error.status = 400;
+    }
     next(error);
   }
 });

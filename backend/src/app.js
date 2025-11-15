@@ -13,16 +13,63 @@ const sequelize = require('./config/database');
 const userStore = require('./services/user-store');
 const errorMiddleware = require('./middleware/errorMiddleware');
 
+// --- Security Validation at Startup ---
+// Validate critical environment variables
+const validateEnvironment = () => {
+  const errors = [];
+
+  // Validate JWT_SECRET
+  if (!process.env.JWT_SECRET) {
+    errors.push('JWT_SECRET is not set. This is required for authentication security.');
+  } else if (process.env.JWT_SECRET.length < 32) {
+    errors.push('JWT_SECRET must be at least 32 characters long for adequate security.');
+  }
+
+  // Validate ENCRYPTION_SECRET
+  if (!process.env.ENCRYPTION_SECRET) {
+    errors.push('ENCRYPTION_SECRET is not set. This is required for encrypting sensitive data.');
+  } else if (process.env.ENCRYPTION_SECRET.length < 32) {
+    errors.push('ENCRYPTION_SECRET must be at least 32 characters long for adequate security.');
+  }
+
+  // Validate CORS_ORIGIN
+  if (!process.env.CORS_ORIGIN) {
+    errors.push('CORS_ORIGIN is not set. Wildcard CORS is a security risk and is not allowed.');
+  } else if (process.env.CORS_ORIGIN === '*') {
+    errors.push('CORS_ORIGIN cannot be set to wildcard (*). Please specify the exact origin of your frontend.');
+  }
+
+  if (errors.length > 0) {
+    logger.error('CRITICAL SECURITY CONFIGURATION ERRORS:');
+    errors.forEach(err => logger.error(`  - ${err}`));
+    logger.error('\nPlease fix these issues in your .env file before starting the server.');
+    logger.error('See .env.example for guidance on generating secure secrets.');
+    process.exit(1);
+  }
+
+  logger.info('Environment security validation passed.');
+};
+
+// Run validation before app initialization
+validateEnvironment();
+
 // --- App Initialization ---
 const app = express();
 const server = http.createServer(app);
 
 // --- Middleware ---
-// Trust the first proxy
+// Trust the first proxy (configure specific IPs in production)
 app.set('trust proxy', 1);
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// CORS - strict origin checking (no wildcard allowed)
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  credentials: true
+}));
+
+// Body parsing with size limits to prevent DoS
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(morgan('combined', { stream: logger.stream }));
 
 // Disable caching for all API responses

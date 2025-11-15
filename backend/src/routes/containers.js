@@ -2,11 +2,25 @@ const express = require('express');
 const dockerService = require('../services/docker');
 const auth = require('../middleware/auth');
 const { logAction } = require('../config/logger');
+const {
+  validateImageName,
+  validateDockerName,
+  validatePortMapping,
+  validateEnvironmentVariable,
+  validateVolumePath
+} = require('../middleware/validation');
+const {
+  dockerOperationsLimiter,
+  containerCreateLimiter
+} = require('../middleware/rateLimiting');
 
 const router = express.Router();
 
 // All routes in this file are protected
 router.use(auth);
+
+// Apply rate limiting to all container operations
+router.use(dockerOperationsLimiter);
 
 // GET /api/containers -> list containers
 router.get('/', async (req, res, next) => {
@@ -97,16 +111,82 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 // POST /api/containers/create
-router.post('/create', async (req, res, next) => {
+router.post('/create', containerCreateLimiter, async (req, res, next) => {
   const { image, name, ports, env, volumes } = req.body;
-  if (!image) {
-    return res.status(400).json({ message: 'Image name is required.' });
-  }
+
   try {
-    const container = await dockerService.createContainer({ image, name, ports, env, volumes });
-    logAction(req.user, 'create_container', { image, name, volumes, containerId: container.id });
-    res.status(201).json({ message: 'Container created successfully.', containerId: container.id.substring(0, 12) });
+    // Validate image name (required)
+    if (!image) {
+      const error = new Error('Image name is required');
+      error.status = 400;
+      throw error;
+    }
+    const validatedImage = validateImageName(image);
+
+    // Validate container name (optional)
+    let validatedName = undefined;
+    if (name) {
+      validatedName = validateDockerName(name, 'Container name');
+    }
+
+    // Validate port mappings (optional)
+    let validatedPorts = undefined;
+    if (ports && Array.isArray(ports)) {
+      validatedPorts = ports.map(port => {
+        if (typeof port === 'string') {
+          return validatePortMapping(port);
+        }
+        return port; // Allow Docker API format objects
+      });
+    }
+
+    // Validate environment variables (optional)
+    let validatedEnv = undefined;
+    if (env && Array.isArray(env)) {
+      validatedEnv = env.map(envVar => validateEnvironmentVariable(envVar));
+    }
+
+    // Validate volume paths (optional)
+    let validatedVolumes = undefined;
+    if (volumes && Array.isArray(volumes)) {
+      validatedVolumes = volumes.map(volumeStr => {
+        // Format: /host/path:/container/path or volumeName:/container/path
+        const parts = volumeStr.split(':');
+        if (parts.length >= 2) {
+          const hostPath = parts[0];
+          // Only validate if it's an absolute path (starts with /)
+          if (hostPath.startsWith('/')) {
+            validateVolumePath(hostPath);
+          }
+        }
+        return volumeStr;
+      });
+    }
+
+    const container = await dockerService.createContainer({
+      image: validatedImage,
+      name: validatedName,
+      ports: validatedPorts,
+      env: validatedEnv,
+      volumes: validatedVolumes
+    });
+
+    logAction(req.user, 'create_container', {
+      image: validatedImage,
+      name: validatedName,
+      volumes: validatedVolumes,
+      containerId: container.id
+    });
+
+    res.status(201).json({
+      message: 'Container created successfully.',
+      containerId: container.id.substring(0, 12)
+    });
   } catch (error) {
+    // Ensure validation errors return 400 status
+    if (!error.status) {
+      error.status = 400;
+    }
     logAction(req.user, 'create_container_failed', { image, name, volumes, error: error.message });
     next(error);
   }
