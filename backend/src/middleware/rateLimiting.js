@@ -12,7 +12,7 @@ const dockerOperationsLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many Docker operations. Please try again in a minute.',
-  skipSuccessfulRequests: false
+  skipSuccessfulRequests: false,
 });
 
 // Stricter rate limiter for resource-intensive operations (pull, build, create)
@@ -21,8 +21,9 @@ const resourceIntensiveLimiter = rateLimit({
   max: 10, // 10 requests per 5 minutes
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many resource-intensive operations. Please try again in a few minutes.',
-  skipSuccessfulRequests: false
+  message:
+    'Too many resource-intensive operations. Please try again in a few minutes.',
+  skipSuccessfulRequests: false,
 });
 
 // Very strict rate limiter for image builds (most resource-intensive)
@@ -32,7 +33,7 @@ const imageBuildLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many image build requests. Please try again in 15 minutes.',
-  skipSuccessfulRequests: false
+  skipSuccessfulRequests: false,
 });
 
 // Rate limiter for container creation
@@ -41,8 +42,9 @@ const containerCreateLimiter = rateLimit({
   max: 20, // 20 container creations per 5 minutes
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many container creation requests. Please try again in a few minutes.',
-  skipSuccessfulRequests: false
+  message:
+    'Too many container creation requests. Please try again in a few minutes.',
+  skipSuccessfulRequests: false,
 });
 
 // Rate limiter for image pulls
@@ -52,7 +54,7 @@ const imagePullLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many image pull requests. Please try again in a few minutes.',
-  skipSuccessfulRequests: false
+  skipSuccessfulRequests: false,
 });
 
 module.exports = {
@@ -60,5 +62,5 @@ module.exports = {
   resourceIntensiveLimiter,
   imageBuildLimiter,
   containerCreateLimiter,
-  imagePullLimiter
+  imagePullLimiter,
 };

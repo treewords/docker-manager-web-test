@@ -9,7 +9,7 @@ const errorMiddleware = (err, req, res, next) => {
     url: req.originalUrl,
     method: req.method,
     ip: req.ip,
-    user: req.user ? req.user.username : 'unauthenticated'
+    user: req.user ? req.user.username : 'unauthenticated',
   });
 
   // Determine status code
@@ -21,7 +21,7 @@ const errorMiddleware = (err, req, res, next) => {
   res.status(statusCode).json({
     error: {
       message: clientMessage,
-      status: statusCode
+      status: statusCode,
     },
   });
 };

@@ -35,26 +35,26 @@ components:
       properties:
         token:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
     Container:
       type: object
       properties:
         id:
           type: string
-          example: "a1b2c3d4e5f6"
+          example: 'a1b2c3d4e5f6'
         name:
           type: string
-          example: "my-nginx-container"
+          example: 'my-nginx-container'
         image:
           type: string
-          example: "nginx:latest"
+          example: 'nginx:latest'
         state:
           type: string
-          example: "running"
+          example: 'running'
         status:
           type: string
-          example: "Up 2 hours"
+          example: 'Up 2 hours'
         ports:
           type: array
           items:
@@ -79,19 +79,19 @@ components:
           description: "The Docker image to use (e.g., 'nginx:latest')."
         name:
           type: string
-          description: "A name for the container."
+          description: 'A name for the container.'
         ports:
           type: array
           items:
             type: string
-            example: "8080:80"
+            example: '8080:80'
           description: "Port mappings in 'host:container' format."
         env:
           type: array
           items:
             type: string
-            example: "MY_VAR=my_value"
-          description: "Environment variables."
+            example: 'MY_VAR=my_value'
+          description: 'Environment variables.'
 
     PullImageRequest:
       type: object
@@ -100,7 +100,7 @@ components:
       properties:
         imageName:
           type: string
-          example: "alpine:latest"
+          example: 'alpine:latest'
 
     Error:
       type: object

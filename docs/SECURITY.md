@@ -1,6 +1,6 @@
 # Security Guide
 
-DockerMist is designed with a defense-in-depth security model. This guide details the security layers that are automatically configured when you use the recommended [`vps_setup.sh`](../vps_setup.sh) script.
+DockerMist is designed with a defense-in-depth security model. This guide details the security layers that are automatically configured when you use the recommended [`vps_setup.sh`](../scripts/vps_setup.sh) script.
 
 ## Host Security
 
@@ -62,7 +62,12 @@ The Nginx management feature is secured against command injection, corrupted con
 
 ### Vulnerability Management
 
--   **Rate Limiting:** The `vps_setup.sh` script does not configure application-level rate limiting by default, but it is a recommended practice. You can add it to your `backend/src/app.js` to protect against brute-force attacks on the login endpoint.
+-   **Rate Limiting:** The application includes comprehensive rate limiting protection:
+    -   Login endpoint: 10 attempts per 15 minutes
+    -   Container creation: 20 requests per 5 minutes
+    -   Image pulls: 15 requests per 5 minutes
+    -   Image builds: 5 requests per 15 minutes
+    -   General Docker operations: 30 requests per minute
 -   **Docker Image Scanning:** Before deploying, it is recommended to scan your Docker images for known vulnerabilities using a tool like `Trivy`.
     ```bash
     # After building your image
@@ -79,12 +84,8 @@ The Docker socket (`/var/run/docker.sock`) provides root-equivalent access to th
 
 ### Container Hardening
 
--   **Non-Root User:** The backend `Dockerfile` is configured to run the application as a non-root user (`node`), reducing the impact of a potential container compromise.
--   **Security Overrides:** A `docker-compose.security.yml` file is provided to apply additional security settings, such as dropping unnecessary Linux capabilities and setting resource limits.
-    ```bash
-    # Example of using the security override
-    docker-compose -f docker-compose.yml -f ~/docker-compose.security.yml up -d
-    ```
+-   **Non-Root User:** The backend `Dockerfile` is configured to run the application as a non-root user (`appuser`), reducing the impact of a potential container compromise.
+-   **Docker Socket Security:** The container is granted access to the Docker socket by adding the container user to the host's docker group, avoiding the need to run as root.
 
 ---
 

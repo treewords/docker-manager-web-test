@@ -13,13 +13,15 @@ const path = require('path');
 const DOCKER_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,254}$/;
 
 // Docker image name validation (registry/repo:tag format)
-const DOCKER_IMAGE_REGEX = /^([a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?\/)?[a-z0-9]+(?:[._-][a-z0-9]+)*(?:\/[a-z0-9]+(?:[._-][a-z0-9]+)*)*(?::[a-zA-Z0-9_.-]+)?$/;
+const DOCKER_IMAGE_REGEX =
+  /^([a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?\/)?[a-z0-9]+(?:[._-][a-z0-9]+)*(?:\/[a-z0-9]+(?:[._-][a-z0-9]+)*)*(?::[a-zA-Z0-9_.-]+)?$/;
 
 // Container ID validation (12 or 64 character hex string)
 const CONTAINER_ID_REGEX = /^[a-f0-9]{12}$|^[a-f0-9]{64}$/;
 
 // Port validation (1-65535)
-const PORT_REGEX = /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;
+const PORT_REGEX =
+  /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;
 
 // Environment variable name validation (alphanumeric + underscore)
 const ENV_VAR_NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -35,7 +37,7 @@ const DANGEROUS_ENV_VARS = [
   'BASH_ENV',
   'ENV',
   'PERL5LIB',
-  'PERLLIB'
+  'PERLLIB',
 ];
 
 // Allowed volume mount paths (whitelist approach)
@@ -43,7 +45,7 @@ const DANGEROUS_ENV_VARS = [
 const getAllowedVolumePaths = () => {
   const envPaths = process.env.ALLOWED_VOLUME_PATHS;
   if (envPaths) {
-    return envPaths.split(',').map(p => p.trim());
+    return envPaths.split(',').map((p) => p.trim());
   }
 
   // Default safe paths - very restrictive
@@ -51,7 +53,7 @@ const getAllowedVolumePaths = () => {
     '/var/lib/docker/volumes',
     '/opt/app-data',
     '/home/*/data',
-    '/tmp/docker-data'
+    '/tmp/docker-data',
   ];
 };
 
@@ -70,21 +72,21 @@ const BLOCKED_VOLUME_PATHS = [
   '/bin',
   '/sbin',
   '/lib',
-  '/lib64'
+  '/lib64',
 ];
 
 // Allowed Docker image registries (whitelist)
 const getAllowedRegistries = () => {
   const envRegistries = process.env.ALLOWED_REGISTRIES;
   if (envRegistries) {
-    return envRegistries.split(',').map(r => r.trim());
+    return envRegistries.split(',').map((r) => r.trim());
   }
 
   // Default: only Docker Hub
   return [
     'docker.io',
     'registry.hub.docker.com',
-    '' // Images without registry prefix default to Docker Hub
+    '', // Images without registry prefix default to Docker Hub
   ];
 };
 
@@ -92,18 +94,21 @@ const getAllowedRegistries = () => {
 const getAllowedGitDomains = () => {
   const envDomains = process.env.ALLOWED_GIT_DOMAINS;
   if (envDomains) {
-    return envDomains.split(',').map(d => d.trim());
+    return envDomains.split(',').map((d) => d.trim());
   }
 
   // Default: only GitHub
-  return [
-    'github.com',
-    'raw.githubusercontent.com'
-  ];
+  return ['github.com', 'raw.githubusercontent.com'];
 };
 
 // Allowed network drivers
-const ALLOWED_NETWORK_DRIVERS = ['bridge', 'host', 'overlay', 'macvlan', 'none'];
+const ALLOWED_NETWORK_DRIVERS = [
+  'bridge',
+  'host',
+  'overlay',
+  'macvlan',
+  'none',
+];
 
 // ============================================================================
 // VALIDATION FUNCTIONS
@@ -123,7 +128,7 @@ const validateDockerName = (name, fieldName = 'name') => {
 
   if (!DOCKER_NAME_REGEX.test(name)) {
     throw new Error(
-      `${fieldName} must start with alphanumeric character and contain only alphanumeric, underscore, dot, and hyphen (max 255 chars)`
+      `${fieldName} must start with alphanumeric character and contain only alphanumeric, underscore, dot, and hyphen (max 255 chars)`,
     );
   }
 
@@ -152,7 +157,7 @@ const validateImageName = (imageName) => {
 
   if (!allowedRegistries.includes(imageRegistry)) {
     throw new Error(
-      `Registry '${imageRegistry}' is not allowed. Allowed registries: ${allowedRegistries.join(', ')}`
+      `Registry '${imageRegistry}' is not allowed. Allowed registries: ${allowedRegistries.join(', ')}`,
     );
   }
 
@@ -242,7 +247,9 @@ const validatePortMapping = (mapping) => {
  */
 const validateEnvironmentVariable = (envVar) => {
   if (!envVar || typeof envVar !== 'string') {
-    throw new Error('Environment variable must be a string in format "KEY=value"');
+    throw new Error(
+      'Environment variable must be a string in format "KEY=value"',
+    );
   }
 
   const [key, ...valueParts] = envVar.split('=');
@@ -255,18 +262,22 @@ const validateEnvironmentVariable = (envVar) => {
   // Validate key format
   if (!ENV_VAR_NAME_REGEX.test(key)) {
     throw new Error(
-      `Invalid environment variable name '${key}'. Must start with letter or underscore and contain only alphanumeric and underscore`
+      `Invalid environment variable name '${key}'. Must start with letter or underscore and contain only alphanumeric and underscore`,
     );
   }
 
   // Check for dangerous variables
   if (DANGEROUS_ENV_VARS.includes(key.toUpperCase())) {
-    throw new Error(`Environment variable '${key}' is not allowed for security reasons`);
+    throw new Error(
+      `Environment variable '${key}' is not allowed for security reasons`,
+    );
   }
 
   // Basic value sanitization - block null bytes and control characters
   if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(value)) {
-    throw new Error('Environment variable value contains invalid control characters');
+    throw new Error(
+      'Environment variable value contains invalid control characters',
+    );
   }
 
   return envVar;
@@ -285,8 +296,13 @@ const validateVolumePath = (volumePath) => {
 
   // Check blocked paths
   for (const blockedPath of BLOCKED_VOLUME_PATHS) {
-    if (normalizedPath === blockedPath || normalizedPath.startsWith(blockedPath + '/')) {
-      throw new Error(`Volume path '${volumePath}' is not allowed for security reasons`);
+    if (
+      normalizedPath === blockedPath ||
+      normalizedPath.startsWith(blockedPath + '/')
+    ) {
+      throw new Error(
+        `Volume path '${volumePath}' is not allowed for security reasons`,
+      );
     }
   }
 
@@ -296,7 +312,9 @@ const validateVolumePath = (volumePath) => {
 
   for (const allowedPath of allowedPaths) {
     // Support wildcard patterns like /home/*/data
-    const regex = new RegExp('^' + allowedPath.replace(/\*/g, '[^/]+') + '($|/)');
+    const regex = new RegExp(
+      '^' + allowedPath.replace(/\*/g, '[^/]+') + '($|/)',
+    );
     if (regex.test(normalizedPath)) {
       isAllowed = true;
       break;
@@ -305,7 +323,7 @@ const validateVolumePath = (volumePath) => {
 
   if (!isAllowed) {
     throw new Error(
-      `Volume path '${volumePath}' is not in the allowed paths list. Contact administrator to allow this path.`
+      `Volume path '${volumePath}' is not in the allowed paths list. Contact administrator to allow this path.`,
     );
   }
 
@@ -337,7 +355,7 @@ const validateGitRepository = (repoUrl) => {
   const allowedDomains = getAllowedGitDomains();
   if (!allowedDomains.includes(parsedUrl.hostname)) {
     throw new Error(
-      `Git repository domain '${parsedUrl.hostname}' is not allowed. Allowed domains: ${allowedDomains.join(', ')}`
+      `Git repository domain '${parsedUrl.hostname}' is not allowed. Allowed domains: ${allowedDomains.join(', ')}`,
     );
   }
 
@@ -354,7 +372,7 @@ const validateNetworkDriver = (driver) => {
 
   if (!ALLOWED_NETWORK_DRIVERS.includes(driver)) {
     throw new Error(
-      `Network driver '${driver}' is not allowed. Allowed drivers: ${ALLOWED_NETWORK_DRIVERS.join(', ')}`
+      `Network driver '${driver}' is not allowed. Allowed drivers: ${ALLOWED_NETWORK_DRIVERS.join(', ')}`,
     );
   }
 
@@ -380,5 +398,5 @@ module.exports = {
   DOCKER_NAME_REGEX,
   DOCKER_IMAGE_REGEX,
   CONTAINER_ID_REGEX,
-  PORT_REGEX
+  PORT_REGEX,
 };

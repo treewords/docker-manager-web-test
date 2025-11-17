@@ -7,11 +7,11 @@ const {
   validateDockerName,
   validatePortMapping,
   validateEnvironmentVariable,
-  validateVolumePath
+  validateVolumePath,
 } = require('../middleware/validation');
 const {
   dockerOperationsLimiter,
-  containerCreateLimiter
+  containerCreateLimiter,
 } = require('../middleware/rateLimiting');
 
 const router = express.Router();
@@ -40,7 +40,10 @@ router.post('/:id/start', async (req, res, next) => {
     logAction(req.user, 'start_container', { containerId: id });
     res.status(200).json({ message: `Container ${id} started successfully.` });
   } catch (error) {
-    logAction(req.user, 'start_container_failed', { containerId: id, error: error.message });
+    logAction(req.user, 'start_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
     next(error);
   }
 });
@@ -53,48 +56,62 @@ router.post('/:id/stop', async (req, res, next) => {
     logAction(req.user, 'stop_container', { containerId: id });
     res.status(200).json({ message: `Container ${id} stopped successfully.` });
   } catch (error) {
-    logAction(req.user, 'stop_container_failed', { containerId: id, error: error.message });
+    logAction(req.user, 'stop_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
     next(error);
   }
 });
 
 // POST /api/containers/:id/restart
 router.post('/:id/restart', async (req, res, next) => {
-    const { id } = req.params;
-    try {
-        await dockerService.restartContainer(id);
-        logAction(req.user, 'restart_container', { containerId: id });
-        res.status(200).json({ message: `Container ${id} restarted successfully.` });
-    } catch (error) {
-        logAction(req.user, 'restart_container_failed', { containerId: id, error: error.message });
-        next(error);
-    }
+  const { id } = req.params;
+  try {
+    await dockerService.restartContainer(id);
+    logAction(req.user, 'restart_container', { containerId: id });
+    res
+      .status(200)
+      .json({ message: `Container ${id} restarted successfully.` });
+  } catch (error) {
+    logAction(req.user, 'restart_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
+    next(error);
+  }
 });
 
 // POST /api/containers/:id/pause
 router.post('/:id/pause', async (req, res, next) => {
-    const { id } = req.params;
-    try {
-        await dockerService.pauseContainer(id);
-        logAction(req.user, 'pause_container', { containerId: id });
-        res.status(200).json({ message: `Container ${id} paused successfully.` });
-    } catch (error) {
-        logAction(req.user, 'pause_container_failed', { containerId: id, error: error.message });
-        next(error);
-    }
+  const { id } = req.params;
+  try {
+    await dockerService.pauseContainer(id);
+    logAction(req.user, 'pause_container', { containerId: id });
+    res.status(200).json({ message: `Container ${id} paused successfully.` });
+  } catch (error) {
+    logAction(req.user, 'pause_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
+    next(error);
+  }
 });
 
 // POST /api/containers/:id/unpause
 router.post('/:id/unpause', async (req, res, next) => {
-    const { id } = req.params;
-    try {
-        await dockerService.unpauseContainer(id);
-        logAction(req.user, 'unpause_container', { containerId: id });
-        res.status(200).json({ message: `Container ${id} unpaused successfully.` });
-    } catch (error) {
-        logAction(req.user, 'unpause_container_failed', { containerId: id, error: error.message });
-        next(error);
-    }
+  const { id } = req.params;
+  try {
+    await dockerService.unpauseContainer(id);
+    logAction(req.user, 'unpause_container', { containerId: id });
+    res.status(200).json({ message: `Container ${id} unpaused successfully.` });
+  } catch (error) {
+    logAction(req.user, 'unpause_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
+    next(error);
+  }
 });
 
 // DELETE /api/containers/:id
@@ -105,7 +122,10 @@ router.delete('/:id', async (req, res, next) => {
     logAction(req.user, 'remove_container', { containerId: id });
     res.status(200).json({ message: `Container ${id} removed successfully.` });
   } catch (error) {
-    logAction(req.user, 'remove_container_failed', { containerId: id, error: error.message });
+    logAction(req.user, 'remove_container_failed', {
+      containerId: id,
+      error: error.message,
+    });
     next(error);
   }
 });
@@ -132,7 +152,7 @@ router.post('/create', containerCreateLimiter, async (req, res, next) => {
     // Validate port mappings (optional)
     let validatedPorts = undefined;
     if (ports && Array.isArray(ports)) {
-      validatedPorts = ports.map(port => {
+      validatedPorts = ports.map((port) => {
         if (typeof port === 'string') {
           return validatePortMapping(port);
         }
@@ -143,13 +163,13 @@ router.post('/create', containerCreateLimiter, async (req, res, next) => {
     // Validate environment variables (optional)
     let validatedEnv = undefined;
     if (env && Array.isArray(env)) {
-      validatedEnv = env.map(envVar => validateEnvironmentVariable(envVar));
+      validatedEnv = env.map((envVar) => validateEnvironmentVariable(envVar));
     }
 
     // Validate volume paths (optional)
     let validatedVolumes = undefined;
     if (volumes && Array.isArray(volumes)) {
-      validatedVolumes = volumes.map(volumeStr => {
+      validatedVolumes = volumes.map((volumeStr) => {
         // Format: /host/path:/container/path or volumeName:/container/path
         const parts = volumeStr.split(':');
         if (parts.length >= 2) {
@@ -168,26 +188,31 @@ router.post('/create', containerCreateLimiter, async (req, res, next) => {
       name: validatedName,
       ports: validatedPorts,
       env: validatedEnv,
-      volumes: validatedVolumes
+      volumes: validatedVolumes,
     });
 
     logAction(req.user, 'create_container', {
       image: validatedImage,
       name: validatedName,
       volumes: validatedVolumes,
-      containerId: container.id
+      containerId: container.id,
     });
 
     res.status(201).json({
       message: 'Container created successfully.',
-      containerId: container.id.substring(0, 12)
+      containerId: container.id.substring(0, 12),
     });
   } catch (error) {
     // Ensure validation errors return 400 status
     if (!error.status) {
       error.status = 400;
     }
-    logAction(req.user, 'create_container_failed', { image, name, volumes, error: error.message });
+    logAction(req.user, 'create_container_failed', {
+      image,
+      name,
+      volumes,
+      error: error.message,
+    });
     next(error);
   }
 });

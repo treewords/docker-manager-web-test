@@ -14,7 +14,9 @@ async function init() {
     const adminPassword = process.env.ADMIN_PASSWORD || 'changeme';
 
     if (!adminPassword || adminPassword === 'changeme') {
-        logger.warn('Default admin password is not set or is insecure. Please set ADMIN_PASSWORD in your .env file.');
+      logger.warn(
+        'Default admin password is not set or is insecure. Please set ADMIN_PASSWORD in your .env file.',
+      );
     }
 
     await addUser(adminUsername, adminPassword);
@@ -73,9 +75,17 @@ const IV_LENGTH = 16;
  */
 function encrypt(text, salt) {
   if (!process.env.ENCRYPTION_SECRET) {
-    throw new Error('ENCRYPTION_SECRET is not defined in the environment variables.');
+    throw new Error(
+      'ENCRYPTION_SECRET is not defined in the environment variables.',
+    );
   }
-  const key = crypto.pbkdf2Sync(process.env.ENCRYPTION_SECRET, salt, 100000, 32, 'sha512');
+  const key = crypto.pbkdf2Sync(
+    process.env.ENCRYPTION_SECRET,
+    salt,
+    100000,
+    32,
+    'sha512',
+  );
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -95,8 +105,18 @@ function encrypt(text, salt) {
  * @returns {string} The decrypted text.
  */
 function decrypt(data, salt) {
-  const key = crypto.pbkdf2Sync(process.env.ENCRYPTION_SECRET, salt, 100000, 32, 'sha512');
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(data.iv, 'hex'));
+  const key = crypto.pbkdf2Sync(
+    process.env.ENCRYPTION_SECRET,
+    salt,
+    100000,
+    32,
+    'sha512',
+  );
+  const decipher = crypto.createDecipheriv(
+    ALGORITHM,
+    key,
+    Buffer.from(data.iv, 'hex'),
+  );
   decipher.setAuthTag(Buffer.from(data.authTag, 'hex'));
   let decrypted = decipher.update(data.encryptedData, 'hex', 'utf8');
   decrypted += decipher.final('utf8');

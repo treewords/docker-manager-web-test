@@ -25,10 +25,10 @@ The most comprehensive way to test the application is to run the built-in integr
 2.  **Run the Test Script:** In a new terminal, navigate to the root of the project and run the script.
     ```bash
     # Make the script executable (if you haven't already)
-    chmod +x test_integration.sh
+    chmod +x scripts/test_integration.sh
 
     # Run the test
-    ./test_integration.sh
+    ./scripts/test_integration.sh
     ```
 
 The script will print its progress and will exit with an error if any step fails.

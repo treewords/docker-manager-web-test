@@ -12,14 +12,16 @@ module.exports = function (req, res, next) {
   // Check if token is in the correct format 'Bearer <token>'
   const tokenParts = authHeader.split(' ');
   if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-      return res.status(401).json({ msg: 'Token is not valid' });
+    return res.status(401).json({ msg: 'Token is not valid' });
   }
 
   const token = tokenParts[1];
 
   // Verify token
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256'],
+    });
     req.user = decoded.user;
     next();
   } catch (err) {
