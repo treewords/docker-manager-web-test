@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Image,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
-  const navigate = useNavigate();
 
   const features = [
     {
@@ -117,19 +115,22 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center space-x-6">
               <a
+                href="https://github.com/treewords/docker-manager-web-test#readme"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-white transition-colors duration-200 text-sm font-medium"
+              >
+                Documentation
+              </a>
+              <a
                 href="https://github.com/treewords/docker-manager-web-test"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-400 hover:text-white transition-colors duration-200"
+                className="text-slate-400 hover:text-white transition-colors duration-200 flex items-center space-x-2"
               >
                 <Github className="w-5 h-5" />
+                <span className="text-sm font-medium">GitHub</span>
               </a>
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
-              >
-                Sign In
-              </button>
             </div>
           </div>
         </div>
@@ -178,13 +179,15 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <button
-                onClick={() => navigate('/login')}
+              <a
+                href="https://github.com/treewords/docker-manager-web-test#readme"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group relative bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center"
               >
-                <span>Get Started Free</span>
+                <span>View Documentation</span>
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </a>
               <a
                 href="https://github.com/treewords/docker-manager-web-test"
                 target="_blank"
@@ -433,20 +436,23 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button
-              onClick={() => navigate('/login')}
-              className="group bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-10 py-5 rounded-xl font-bold text-lg transition-all duration-300 shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 flex items-center justify-center"
-            >
-              <span>Start Managing Containers</span>
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
             <a
               href="https://github.com/treewords/docker-manager-web-test#readme"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-slate-800/50 hover:bg-slate-800 backdrop-blur-sm text-white px-10 py-5 rounded-xl font-bold text-lg transition-all duration-300 border border-slate-700 hover:border-slate-600 hover:-translate-y-0.5 flex items-center justify-center"
+              className="group bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-10 py-5 rounded-xl font-bold text-lg transition-all duration-300 shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 flex items-center justify-center"
             >
               <span>Read Documentation</span>
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+            <a
+              href="https://github.com/treewords/docker-manager-web-test"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-slate-800/50 hover:bg-slate-800 backdrop-blur-sm text-white px-10 py-5 rounded-xl font-bold text-lg transition-all duration-300 border border-slate-700 hover:border-slate-600 hover:-translate-y-0.5 flex items-center justify-center"
+            >
+              <Github className="mr-2 w-5 h-5" />
+              <span>Explore Source Code</span>
             </a>
           </div>
 
