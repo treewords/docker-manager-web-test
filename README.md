@@ -6,6 +6,9 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Node.js](https://img.shields.io/badge/Node.js-v20.19+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
+[![CI](https://img.shields.io/badge/CI-passing-success)](https://github.com/treewords/docker-manager-web-test/actions)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Code of Conduct](https://img.shields.io/badge/Code%20of-Conduct-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
 DockerMist transforms Docker container management into a streamlined, intuitive experience. Built for developers and small teams who need powerful orchestration without the complexity of enterprise platforms, it delivers production-ready container management through a beautiful web interface.
 
@@ -36,6 +39,54 @@ DockerMist transforms Docker container management into a streamlined, intuitive 
 - **Modern UI** - Clean, intuitive interface built with React and TailwindCSS
 - **API Documentation** - Interactive Swagger UI for endpoint exploration and testing
 - **Volume Management** - Create and delete persistent storage volumes with ease
+
+## 📁 Repository Structure
+
+```
+docker-manager-web-test/
+├── .github/                    # GitHub specific files
+│   ├── workflows/              # CI/CD workflows
+│   │   ├── ci.yml             # Continuous integration
+│   │   └── deploy.yml         # Deployment workflow
+│   ├── ISSUE_TEMPLATE/        # Issue templates
+│   │   ├── bug_report.md
+│   │   └── feature_request.md
+│   └── pull_request_template.md
+├── backend/                    # Backend API service
+│   ├── src/                   # Source code
+│   │   ├── config/            # Configuration files
+│   │   ├── middleware/        # Express middleware
+│   │   ├── models/            # Data models
+│   │   ├── routes/            # API routes
+│   │   └── services/          # Business logic
+│   ├── docs/                  # API documentation
+│   ├── Dockerfile             # Backend container image
+│   └── package.json           # Backend dependencies
+├── frontend/                   # Frontend React application
+│   ├── src/                   # Source code
+│   │   ├── components/        # React components
+│   │   ├── contexts/          # React contexts
+│   │   ├── pages/             # Page components
+│   │   └── services/          # API services
+│   ├── Dockerfile             # Frontend container image
+│   └── package.json           # Frontend dependencies
+├── docs/                      # Project documentation
+│   ├── DEPLOYMENT.md          # Deployment guide
+│   ├── OPERATIONS.md          # Operations guide
+│   ├── SECURITY.md            # Security guide
+│   └── TESTING.md             # Testing guide
+├── scripts/                   # Utility scripts
+│   ├── vps_setup.sh          # VPS setup automation
+│   └── test_integration.sh   # Integration tests
+├── public/                    # Static assets
+│   └── landing.html          # Landing page
+├── docker-compose.yml         # Full stack orchestration
+├── CONTRIBUTING.md            # Contribution guidelines
+├── CODE_OF_CONDUCT.md         # Code of conduct
+├── CHANGELOG.md               # Version history
+├── README.md                  # This file
+└── LICENSE                    # MIT License
+```
 
 ## 🏗️ Architecture
 
@@ -79,7 +130,7 @@ This script handles all security hardening, dependency installation, and configu
 
 ```bash
 # On your Ubuntu 22.04 VPS as root
-wget https://raw.githubusercontent.com/your-username/dockermist/main/vps_setup.sh
+wget https://raw.githubusercontent.com/treewords/docker-manager-web-test/main/scripts/vps_setup.sh
 chmod +x vps_setup.sh
 ./vps_setup.sh
 ```
@@ -110,8 +161,8 @@ For local testing and development on your machine.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/dockermist.git
-cd dockermist
+git clone https://github.com/treewords/docker-manager-web-test.git
+cd docker-manager-web-test
 
 # 2. Set up and start the backend
 cd backend
@@ -133,6 +184,10 @@ docker-compose up --build
 cd ../frontend
 npm install
 npm run dev
+
+# Or use root-level docker-compose for full orchestration
+cd ..
+docker-compose up --build
 ```
 
 **Access the dashboard:** http://localhost:3001
@@ -142,10 +197,13 @@ npm run dev
 
 | Guide | Description |
 |-------|-------------|
-| [Deployment Guide](./DEPLOYMENT.md) | Manual deployment and custom setups |
-| [Security Guide](./SECURITY.md) | In-depth look at the security features |
-| [Operations Guide](./OPERATIONS.md) | Backups, monitoring, and maintenance tasks |
-| [Testing Guide](./TESTING.md) | API testing with curl and integration tests |
+| [Deployment Guide](./docs/DEPLOYMENT.md) | Manual deployment and custom setups |
+| [Security Guide](./docs/SECURITY.md) | In-depth look at the security features |
+| [Operations Guide](./docs/OPERATIONS.md) | Backups, monitoring, and maintenance tasks |
+| [Testing Guide](./docs/TESTING.md) | API testing with curl and integration tests |
+| [Contributing Guide](./CONTRIBUTING.md) | How to contribute to this project |
+| [Code of Conduct](./CODE_OF_CONDUCT.md) | Community guidelines and standards |
+| [Changelog](./CHANGELOG.md) | Version history and release notes |
 | [API Documentation](http://localhost:3000/api-docs) | Interactive Swagger UI (when backend is running) |
 
 ## 🔒 Security
@@ -185,15 +243,23 @@ cd backend
 sudo -E node src/app.js
 
 # 2. In another terminal, run the test script
-chmod +x test_integration.sh
-./test_integration.sh
+chmod +x scripts/test_integration.sh
+./scripts/test_integration.sh
 ```
 
-For more detailed API testing examples, see [TESTING.md](./TESTING.md).
+For more detailed API testing examples, see [TESTING.md](./docs/TESTING.md).
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please fork the repository, create a feature branch, and open a pull request. See our contributing guidelines for more details.
+Contributions are welcome! We appreciate all contributions, from bug reports to feature implementations.
+
+Please read our [Contributing Guide](CONTRIBUTING.md) for:
+- Development setup instructions
+- Coding standards and best practices
+- Commit message guidelines
+- Pull request process
+
+Before contributing, please review our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 📝 License
 
