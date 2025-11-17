@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext } from './contexts/AuthContext';
-import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import MainLayout from './components/MainLayout';
@@ -23,7 +22,7 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
       <Route path="/containers" element={<PrivateRoute><ContainersPage /></PrivateRoute>} />
@@ -32,8 +31,8 @@ function App() {
       <Route path="/networks/:id" element={<PrivateRoute><NetworkDetailsPage /></PrivateRoute>} />
       <Route path="/volumes" element={<PrivateRoute><VolumesPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><UserSettingsPage /></PrivateRoute>} />
-      {/* Default route - redirect authenticated users to dashboard, others to landing */}
-      <Route path="*" element={<Navigate to={token ? "/dashboard" : "/"} />} />
+      {/* Default route - redirect authenticated users to dashboard, others to login */}
+      <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
     </Routes>
   );
 }
