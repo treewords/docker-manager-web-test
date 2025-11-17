@@ -29,8 +29,8 @@ RUN addgroup -S appgroup && \
     fi && \
     adduser appuser $DOCKER_GROUP_NAME
 
-# Install gosu (replacement for su-exec in Alpine 3.21+)
-RUN apk add --no-cache gosu
+# Install su-exec for privilege dropping (available in Alpine 3.21)
+RUN apk add --no-cache su-exec
 
 # Create data directory
 RUN mkdir -p /usr/src/app/data
