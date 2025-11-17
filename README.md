@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Node.js](https://img.shields.io/badge/Node.js-v14+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-v20.19+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 
 DockerMist transforms Docker container management into a streamlined, intuitive experience. Built for developers and small teams who need powerful orchestration without the complexity of enterprise platforms, it delivers production-ready container management through a beautiful web interface.
@@ -103,7 +103,7 @@ For local testing and development on your machine.
 #### Prerequisites
 
 - **Docker** & **Docker Compose**
-- **Node.js** (v14+) & **npm**
+- **Node.js** (v20.19.0+) & **npm**
 - **Git**
 
 #### Setup Steps
