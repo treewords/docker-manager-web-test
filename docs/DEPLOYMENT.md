@@ -2,7 +2,7 @@
 
 This guide provides step-by-step instructions for a manual deployment of the Docker Manager Dashboard.
 
-> **Note:** For a faster, more secure, and comprehensive setup, we strongly recommend using the automated [`vps_setup.sh`](../vps_setup.sh) script on a fresh Ubuntu 22.04 server. This script handles all the steps in this guide and more, including advanced security hardening. This manual guide is intended for users who want to customize their setup or deploy on a different OS.
+> **Note:** For a faster, more secure, and comprehensive setup, we strongly recommend using the automated [`vps_setup.sh`](../scripts/vps_setup.sh) script on a fresh Ubuntu 22.04 server. This script handles all the steps in this guide and more, including advanced security hardening. This manual guide is intended for users who want to customize their setup or deploy on a different OS.
 
 ## Part 1: Initial VPS Setup (Ubuntu 22.04)
 
@@ -67,13 +67,6 @@ This is the simplest way to manage the backend container.
 ```bash
 # From the /backend directory
 docker compose up --build -d
-```
-
-For enhanced security, you can use the provided security override file:
-
-```bash
-# This applies stricter security settings to the container
-docker-compose -f docker-compose.yml -f ~/docker-compose.security.yml up --build -d
 ```
 
 **Common commands:**

@@ -1,6 +1,6 @@
 # Operations & Maintenance Guide
 
-This document covers ongoing operational tasks for maintaining the Docker Manager Dashboard, especially for deployments managed by the [`vps_setup.sh`](../vps_setup.sh) script.
+This document covers ongoing operational tasks for maintaining the Docker Manager Dashboard, especially for deployments managed by the [`vps_setup.sh`](../scripts/vps_setup.sh) script.
 
 ## 1. Intrusion Detection and Prevention
 
