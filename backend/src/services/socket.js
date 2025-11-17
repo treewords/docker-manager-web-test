@@ -10,7 +10,7 @@ let io;
  * @returns {Server|null} The io instance or null if not initialized.
  */
 function getIO() {
-    return io;
+  return io;
 }
 
 /**
@@ -22,7 +22,7 @@ function setupWebSocket(server) {
     cors: {
       origin: process.env.CORS_ORIGIN,
       methods: ['GET', 'POST'],
-      credentials: true
+      credentials: true,
     },
   });
 
@@ -44,7 +44,9 @@ function setupWebSocket(server) {
 
   // Handle WebSocket Connections
   io.on('connection', (socket) => {
-    logger.info(`WebSocket connected: ${socket.id} for user ${socket.user.username}`);
+    logger.info(
+      `WebSocket connected: ${socket.id} for user ${socket.user.username}`,
+    );
     logAction(socket.user, 'websocket_connect');
 
     // Join a room based on the user's ID to allow for targeted messaging
@@ -53,23 +55,30 @@ function setupWebSocket(server) {
     let logStream = null;
     let execStream = null;
 
-
     // DISABLED: Container exec functionality is disabled for security reasons
     // Arbitrary command execution in containers poses significant security risks
     // including container escape, privilege escalation, and system compromise
     socket.on('exec', async ({ containerId, command }) => {
-      logger.warn(`User ${socket.user.username} attempted to execute command in ${containerId} (BLOCKED): ${command}`);
-      logAction(socket.user, 'container_exec_blocked', { containerId, command });
+      logger.warn(
+        `User ${socket.user.username} attempted to execute command in ${containerId} (BLOCKED): ${command}`,
+      );
+      logAction(socket.user, 'container_exec_blocked', {
+        containerId,
+        command,
+      });
 
-      socket.emit('exec:error',
+      socket.emit(
+        'exec:error',
         'Container exec functionality has been disabled for security reasons. ' +
-        'Please use docker exec directly on the host if you need to run commands in containers.'
+          'Please use docker exec directly on the host if you need to run commands in containers.',
       );
     });
 
     // Listener for container log streaming requests
     socket.on('container:logs', async ({ containerId }) => {
-      logger.info(`User ${socket.user.username} requested logs for container ${containerId}`);
+      logger.info(
+        `User ${socket.user.username} requested logs for container ${containerId}`,
+      );
       logAction(socket.user, 'container_logs_start', { containerId });
 
       // If already streaming, stop the old stream first
@@ -85,14 +94,19 @@ function setupWebSocket(server) {
 
         // Handle stream ending or errors
         logStream.on('end', () => {
-            socket.emit('log:end', 'Log stream finished.');
-            logAction(socket.user, 'container_logs_end', { containerId });
+          socket.emit('log:end', 'Log stream finished.');
+          logAction(socket.user, 'container_logs_end', { containerId });
         });
-
       } catch (error) {
         logger.error(`Error streaming logs for ${containerId}:`, error);
-        logAction(socket.user, 'container_logs_failed', { containerId, error: error.message });
-        socket.emit('log:error', `Error fetching logs for container ${containerId}.`);
+        logAction(socket.user, 'container_logs_failed', {
+          containerId,
+          error: error.message,
+        });
+        socket.emit(
+          'log:error',
+          `Error fetching logs for container ${containerId}.`,
+        );
       }
     });
 

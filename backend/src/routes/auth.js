@@ -12,7 +12,8 @@ const loginLimiter = rateLimit({
   max: 10, // limit each IP to 10 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many login attempts from this IP, please try again after 15 minutes',
+  message:
+    'Too many login attempts from this IP, please try again after 15 minutes',
 });
 
 // POST /api/auth/login
@@ -20,7 +21,9 @@ router.post('/login', loginLimiter, async (req, res, next) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password are required.' });
+    return res
+      .status(400)
+      .json({ message: 'Username and password are required.' });
   }
 
   try {
@@ -47,7 +50,6 @@ router.post('/login', loginLimiter, async (req, res, next) => {
 
     logAction({ username }, 'login_success');
     res.json({ token });
-
   } catch (error) {
     logAction({ username }, 'login_failure', { error: error.message });
     next(error);
