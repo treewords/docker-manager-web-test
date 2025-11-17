@@ -1,5 +1,5 @@
 # ---- Base Node ----
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /usr/src/app
 COPY package*.json ./
 
@@ -8,7 +8,7 @@ FROM base AS dependencies
 RUN npm install --production
 
 # ---- Release ----
-FROM node:18-alpine AS release
+FROM node:20-alpine AS release
 WORKDIR /usr/src/app
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY docs ./docs
