@@ -38,11 +38,17 @@ The `vps_setup.sh` script automates the hardening of the host server.
 
 -   **Nginx Reverse Proxy:** All API traffic is proxied through a hardened Nginx server, which handles SSL termination and provides an additional layer of security.
 -   **Hardened SSL/TLS:** The Nginx configuration is set up with an A+ grade SSL configuration from SSL Labs, using strong ciphers (TLSv1.2, TLSv1.3) and security headers.
--   **Security Headers:** The Nginx configuration includes important security headers:
-    -   `Strict-Transport-Security` (HSTS) to enforce HTTPS.
-    -   `X-Frame-Options` to prevent clickjacking.
-    -   `X-Content-Type-Options` to prevent MIME-sniffing.
-    -   `Content-Security-Policy` (CSP) to mitigate XSS attacks.
+-   **Security Headers (Helmet):** The backend application uses Helmet middleware to set comprehensive security headers:
+    -   `Content-Security-Policy` (CSP): Enforces a strict policy that:
+        -   Only allows scripts from the same origin (`'self'`)
+        -   **Blocks `eval()` and string-based code execution** (no `unsafe-eval`)
+        -   Allows inline styles for React/Tailwind compatibility (`'unsafe-inline'` for styles only)
+        -   Restricts image sources to same origin, data URIs, and HTTPS
+        -   Blocks object and frame embedding for enhanced security
+    -   `Strict-Transport-Security` (HSTS): Enforces HTTPS for 1 year with preload
+    -   `X-Frame-Options`: Prevents clickjacking attacks
+    -   `X-Content-Type-Options`: Prevents MIME-sniffing
+    -   `X-DNS-Prefetch-Control`: Controls DNS prefetching
 -   **Restricted CORS Origin:** The `CORS_ORIGIN` in your `.env` file must be set to the exact domain of your frontend to prevent other websites from making requests to your API.
 
 ### Atomic and Secure Nginx Configuration Management
