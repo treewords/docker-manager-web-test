@@ -4,6 +4,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const morgan = require('morgan');
+const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 
@@ -74,6 +75,30 @@ const server = http.createServer(app);
 // --- Middleware ---
 // Trust the first proxy (configure specific IPs in production)
 app.set('trust proxy', 1);
+
+// Security headers with helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React/Tailwind
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  }),
+);
 
 // CORS - strict origin checking (no wildcard allowed)
 app.use(
