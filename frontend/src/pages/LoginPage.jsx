@@ -125,16 +125,6 @@ const LoginPage = () => {
             </p>
           </div>
         </div>
-
-        {/* Bottom Link */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => navigate('/')}
-            className="text-slate-400 hover:text-white text-sm transition-colors"
-          >
-            ← Back to landing page
-          </button>
-        </div>
       </div>
     </div>
   );
