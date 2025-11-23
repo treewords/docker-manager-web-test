@@ -55,12 +55,12 @@ function csrfProtection(req, res, next) {
       path: req.path,
       method: req.method,
       hasCookie: !!cookieToken,
-      hasHeader: !!headerToken
+      hasHeader: !!headerToken,
     });
 
     return res.status(403).json({
       error: 'CSRF token validation failed',
-      message: 'Please refresh the page and try again'
+      message: 'Please refresh the page and try again',
     });
   }
 
@@ -68,12 +68,12 @@ function csrfProtection(req, res, next) {
     logger.warn('CSRF validation failed: Token mismatch', {
       ip: req.ip,
       path: req.path,
-      method: req.method
+      method: req.method,
     });
 
     return res.status(403).json({
       error: 'CSRF token validation failed',
-      message: 'Please refresh the page and try again'
+      message: 'Please refresh the page and try again',
     });
   }
 
@@ -83,12 +83,12 @@ function csrfProtection(req, res, next) {
     logger.warn('CSRF validation failed: Token expired or invalid', {
       ip: req.ip,
       path: req.path,
-      method: req.method
+      method: req.method,
     });
 
     return res.status(403).json({
       error: 'CSRF token expired',
-      message: 'Please refresh the page and try again'
+      message: 'Please refresh the page and try again',
     });
   }
 
@@ -104,7 +104,7 @@ function setCSRFToken(req, res) {
   // Store token with creation timestamp
   tokenStore.set(token, {
     created: Date.now(),
-    ip: req.ip
+    ip: req.ip,
   });
 
   // Set cookie (readable by JavaScript for header inclusion)
@@ -113,7 +113,7 @@ function setCSRFToken(req, res) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: TOKEN_EXPIRY,
-    path: '/'
+    path: '/',
   });
 
   res.json({ csrfToken: token });
@@ -127,7 +127,7 @@ function ensureCSRFToken(req, res, next) {
     const token = generateCSRFToken();
     tokenStore.set(token, {
       created: Date.now(),
-      ip: req.ip
+      ip: req.ip,
     });
 
     res.cookie('csrf-token', token, {
@@ -135,7 +135,7 @@ function ensureCSRFToken(req, res, next) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: TOKEN_EXPIRY,
-      path: '/'
+      path: '/',
     });
   }
   next();
@@ -145,5 +145,5 @@ module.exports = {
   csrfProtection,
   setCSRFToken,
   ensureCSRFToken,
-  generateCSRFToken
+  generateCSRFToken,
 };

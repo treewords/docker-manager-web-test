@@ -27,7 +27,7 @@ router.get('/status', authenticateToken, async (req, res) => {
       rootContainers: 0,
       publicPortContainers: 0,
       noHealthCheckContainers: 0,
-      danglingImages: 0
+      danglingImages: 0,
     };
 
     // Check each running container
@@ -40,7 +40,9 @@ router.get('/status', authenticateToken, async (req, res) => {
       try {
         const container = docker.getContainer(containerInfo.Id);
         const inspection = await container.inspect();
-        const containerName = containerInfo.Names[0]?.substring(1) || containerInfo.Id.substring(0, 12);
+        const containerName =
+          containerInfo.Names[0]?.substring(1) ||
+          containerInfo.Id.substring(0, 12);
 
         // Check 1: Privileged mode
         if (inspection.HostConfig?.Privileged) {
@@ -48,7 +50,7 @@ router.get('/status', authenticateToken, async (req, res) => {
           securityChecks.issues.push({
             type: 'privileged',
             container: containerName,
-            message: `Container '${containerName}' runs in privileged mode`
+            message: `Container '${containerName}' runs in privileged mode`,
           });
           containerSecure = false;
         }
@@ -60,7 +62,7 @@ router.get('/status', authenticateToken, async (req, res) => {
           securityChecks.warnings.push({
             type: 'root',
             container: containerName,
-            message: `Container '${containerName}' runs as root`
+            message: `Container '${containerName}' runs as root`,
           });
         }
 
@@ -74,7 +76,7 @@ router.get('/status', authenticateToken, async (req, res) => {
                 securityChecks.warnings.push({
                   type: 'public_port',
                   container: containerName,
-                  message: `Container '${containerName}' exposes port ${port} publicly`
+                  message: `Container '${containerName}' exposes port ${port} publicly`,
                 });
                 break;
               }
@@ -83,7 +85,10 @@ router.get('/status', authenticateToken, async (req, res) => {
         }
 
         // Check 4: No health check defined
-        if (!inspection.Config?.Healthcheck || !inspection.Config.Healthcheck.Test) {
+        if (
+          !inspection.Config?.Healthcheck ||
+          !inspection.Config.Healthcheck.Test
+        ) {
           securityChecks.noHealthCheckContainers++;
           // This is informational, not a warning
         }
@@ -91,23 +96,29 @@ router.get('/status', authenticateToken, async (req, res) => {
         if (containerSecure) {
           securityChecks.secure++;
         }
-
       } catch (inspectError) {
-        logger.error(`Error inspecting container ${containerInfo.Id}:`, inspectError);
+        logger.error(
+          `Error inspecting container ${containerInfo.Id}:`,
+          inspectError,
+        );
       }
     }
 
     // Check for dangling images (no tags)
     for (const image of images) {
-      if (!image.RepoTags || image.RepoTags.length === 0 ||
-          (image.RepoTags.length === 1 && image.RepoTags[0] === '<none>:<none>')) {
+      if (
+        !image.RepoTags ||
+        image.RepoTags.length === 0 ||
+        (image.RepoTags.length === 1 && image.RepoTags[0] === '<none>:<none>')
+      ) {
         securityChecks.danglingImages++;
       }
     }
 
     // Calculate overall status
     const criticalIssues = securityChecks.privilegedContainers;
-    const warningCount = securityChecks.rootContainers + securityChecks.publicPortContainers;
+    const warningCount =
+      securityChecks.rootContainers + securityChecks.publicPortContainers;
 
     let overallStatus = 'secure';
     let statusMessage = 'All security features active';
@@ -130,18 +141,17 @@ router.get('/status', authenticateToken, async (req, res) => {
         runningAsRoot: securityChecks.rootContainers,
         publicPorts: securityChecks.publicPortContainers,
         noHealthCheck: securityChecks.noHealthCheckContainers,
-        danglingImages: securityChecks.danglingImages
+        danglingImages: securityChecks.danglingImages,
       },
       issues: securityChecks.issues,
-      warnings: securityChecks.warnings
+      warnings: securityChecks.warnings,
     });
-
   } catch (error) {
     logger.error('Error checking security status:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to check security status',
-      error: error.message
+      error: error.message,
     });
   }
 });

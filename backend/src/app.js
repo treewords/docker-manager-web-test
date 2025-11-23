@@ -16,14 +16,20 @@ const userStore = require('./services/user-store');
 const errorMiddleware = require('./middleware/errorMiddleware');
 
 // Security middleware imports
-const { csrfProtection, setCSRFToken, ensureCSRFToken } = require('./middleware/csrf');
-const { adaptiveRateLimitMiddleware } = require('./middleware/adaptiveRateLimiting');
+const {
+  csrfProtection,
+  setCSRFToken,
+  ensureCSRFToken,
+} = require('./middleware/csrf');
+const {
+  adaptiveRateLimitMiddleware,
+} = require('./middleware/adaptiveRateLimiting');
 const {
   enhancedSecurityHeaders,
   requestFingerprint,
   detectSuspiciousPatterns,
   requestSizeLimiter,
-  secureJsonParsing
+  secureJsonParsing,
 } = require('./middleware/enhancedSecurity');
 
 // --- Security Validation at Startup ---

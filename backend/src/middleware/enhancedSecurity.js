@@ -4,7 +4,11 @@
  * Additional security layers beyond basic Helmet configuration.
  */
 
-const { logSecurityEvent, SecurityEventType, extractSecurityDetails } = require('../utils/securityLogger');
+const {
+  logSecurityEvent,
+  SecurityEventType,
+  extractSecurityDetails,
+} = require('../utils/securityLogger');
 
 /**
  * Security headers middleware
@@ -24,8 +28,9 @@ function enhancedSecurityHeaders(req, res, next) {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   // Permissions Policy - restrict browser features
-  res.setHeader('Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=()'
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=()',
   );
 
   // Cross-Origin policies
@@ -33,7 +38,10 @@ function enhancedSecurityHeaders(req, res, next) {
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
   // Disable caching for API responses
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate',
+  );
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
@@ -51,7 +59,7 @@ function requestFingerprint(req, res, next) {
     userAgent: req.headers['user-agent'] || 'unknown',
     acceptLanguage: req.headers['accept-language'] || 'unknown',
     acceptEncoding: req.headers['accept-encoding'] || 'unknown',
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 
   next();
@@ -72,7 +80,7 @@ function detectSuspiciousPatterns(req, res, next) {
     // Script injection
     /<script[\s\S]*?>[\s\S]*?<\/script>/i,
     // Command injection
-    /\b(eval|exec|system|passthru|shell_exec)\s*\(/i
+    /\b(eval|exec|system|passthru|shell_exec)\s*\(/i,
   ];
 
   // Check URL path
@@ -88,8 +96,8 @@ function detectSuspiciousPatterns(req, res, next) {
         ...extractSecurityDetails(req),
         metadata: {
           pattern: pattern.toString(),
-          matchedIn: 'request'
-        }
+          matchedIn: 'request',
+        },
       });
 
       // Don't block, just log (validation middleware will handle blocking)
@@ -112,12 +120,12 @@ function requestSizeLimiter(options = {}) {
     if (req.originalUrl && req.originalUrl.length > maxUrlLength) {
       logSecurityEvent(SecurityEventType.VALIDATION_FAILED, {
         ...extractSecurityDetails(req),
-        metadata: { reason: 'URL too long', length: req.originalUrl.length }
+        metadata: { reason: 'URL too long', length: req.originalUrl.length },
       });
 
       return res.status(414).json({
         error: 'URI Too Long',
-        message: 'The request URL exceeds the maximum allowed length'
+        message: 'The request URL exceeds the maximum allowed length',
       });
     }
 
@@ -126,12 +134,12 @@ function requestSizeLimiter(options = {}) {
     if (contentLength > maxBodySize) {
       logSecurityEvent(SecurityEventType.VALIDATION_FAILED, {
         ...extractSecurityDetails(req),
-        metadata: { reason: 'Body too large', size: contentLength }
+        metadata: { reason: 'Body too large', size: contentLength },
       });
 
       return res.status(413).json({
         error: 'Payload Too Large',
-        message: 'The request body exceeds the maximum allowed size'
+        message: 'The request body exceeds the maximum allowed size',
       });
     }
 
@@ -173,7 +181,7 @@ function secureJsonParsing(req, res, next) {
         if (dangerous.includes(key)) {
           logSecurityEvent(SecurityEventType.INJECTION_ATTEMPT, {
             ...extractSecurityDetails(req),
-            metadata: { type: 'prototype_pollution', key, path }
+            metadata: { type: 'prototype_pollution', key, path },
           });
 
           delete obj[key];
@@ -195,5 +203,5 @@ module.exports = {
   detectSuspiciousPatterns,
   requestSizeLimiter,
   apiVersionCheck,
-  secureJsonParsing
+  secureJsonParsing,
 };

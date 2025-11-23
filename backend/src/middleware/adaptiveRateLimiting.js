@@ -19,11 +19,14 @@ class AdaptiveRateLimiter {
       initialBlockDuration: options.initialBlockDuration || 60 * 1000, // 1 minute
       maxBlockDuration: options.maxBlockDuration || 24 * 60 * 60 * 1000, // 24 hours
       decayTime: options.decayTime || 30 * 60 * 1000, // 30 minutes
-      cleanupInterval: options.cleanupInterval || 60 * 60 * 1000 // 1 hour
+      cleanupInterval: options.cleanupInterval || 60 * 60 * 1000, // 1 hour
     };
 
     // Start periodic cleanup
-    this._cleanupInterval = setInterval(() => this.cleanup(), this.options.cleanupInterval);
+    this._cleanupInterval = setInterval(
+      () => this.cleanup(),
+      this.options.cleanupInterval,
+    );
   }
 
   /**
@@ -48,14 +51,15 @@ class AdaptiveRateLimiter {
             ip,
             failedAttempts,
             retryAfter,
-            path: req.path
+            path: req.path,
           });
 
           res.set('Retry-After', retryAfter);
           return res.status(429).json({
             error: 'Too many failed attempts',
-            message: 'Your IP has been temporarily blocked due to suspicious activity',
-            retryAfter
+            message:
+              'Your IP has been temporarily blocked due to suspicious activity',
+            retryAfter,
           });
         }
       }
@@ -74,7 +78,7 @@ class AdaptiveRateLimiter {
     const originalJson = res.json.bind(res);
     const self = this;
 
-    res.json = function(data) {
+    res.json = function (data) {
       // Track authentication failures
       if (res.statusCode === 401 || res.statusCode === 403) {
         self._recordFailure(ip, req);
@@ -96,7 +100,7 @@ class AdaptiveRateLimiter {
       failedAttempts: 0,
       lastFailed: null,
       blockUntil: null,
-      firstFailed: now
+      firstFailed: now,
     };
 
     current.failedAttempts += 1;
@@ -107,7 +111,7 @@ class AdaptiveRateLimiter {
       const exponent = current.failedAttempts - this.options.maxFailedAttempts;
       const blockDuration = Math.min(
         this.options.initialBlockDuration * Math.pow(2, exponent),
-        this.options.maxBlockDuration
+        this.options.maxBlockDuration,
       );
 
       current.blockUntil = now + blockDuration;
@@ -116,7 +120,7 @@ class AdaptiveRateLimiter {
         ip,
         failedAttempts: current.failedAttempts,
         blockDuration: blockDuration / 1000,
-        path: req.path
+        path: req.path,
       });
     }
 
@@ -172,7 +176,7 @@ class AdaptiveRateLimiter {
     }
 
     logger.debug('Adaptive rate limiter cleanup completed', {
-      remainingEntries: this.suspiciousIPs.size
+      remainingEntries: this.suspiciousIPs.size,
     });
   }
 
@@ -184,7 +188,7 @@ class AdaptiveRateLimiter {
       failedAttempts: this.options.maxFailedAttempts,
       lastFailed: Date.now(),
       blockUntil: Date.now() + duration,
-      firstFailed: Date.now()
+      firstFailed: Date.now(),
     });
 
     logger.info('IP manually blocked', { ip, duration });
@@ -211,7 +215,9 @@ class AdaptiveRateLimiter {
       tracked: true,
       failedAttempts: data.failedAttempts,
       isBlocked: data.blockUntil && Date.now() < data.blockUntil,
-      blockRemaining: data.blockUntil ? Math.max(0, data.blockUntil - Date.now()) : 0
+      blockRemaining: data.blockUntil
+        ? Math.max(0, data.blockUntil - Date.now())
+        : 0,
     };
   }
 
@@ -232,5 +238,5 @@ const adaptiveLimiter = new AdaptiveRateLimiter();
 module.exports = {
   AdaptiveRateLimiter,
   adaptiveLimiter,
-  adaptiveRateLimitMiddleware: adaptiveLimiter.middleware()
+  adaptiveRateLimitMiddleware: adaptiveLimiter.middleware(),
 };
