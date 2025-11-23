@@ -16,13 +16,18 @@ import {
   PlayCircle,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX
 } from 'lucide-react';
 import { getContainers } from '../services/containerService';
 import { getImages } from '../services/imageService';
 import { getNetworks } from '../services/networkService';
 import { getVolumes, createVolume } from '../services/volumeService';
 import { createNetwork } from '../services/networkService';
+import { getSecurityStatus } from '../services/securityService';
 import StartContainerModal from '../components/StartContainerModal';
 import PullImageModal from '../components/PullImageModal';
 import CreateNetworkModal from '../components/CreateNetworkModal';
@@ -49,6 +54,13 @@ const DashboardPage = () => {
 
   // Recent activity from real container events
   const [recentActivity, setRecentActivity] = useState([]);
+
+  // Security status
+  const [securityStatus, setSecurityStatus] = useState({
+    status: 'loading',
+    message: 'Checking security...',
+    summary: { total: 0, secure: 0, privileged: 0, runningAsRoot: 0, publicPorts: 0 }
+  });
 
   // Modal states
   const [showStartContainerModal, setShowStartContainerModal] = useState(false);
@@ -136,6 +148,19 @@ const DashboardPage = () => {
       setRecentActivity(activities.length > 0 ? activities : [
         { action: 'No recent activity', name: 'Start using Docker', time: 'Now', type: 'info' }
       ]);
+
+      // Fetch security status
+      try {
+        const security = await getSecurityStatus();
+        setSecurityStatus(security);
+      } catch (secErr) {
+        console.error('Error fetching security status:', secErr);
+        setSecurityStatus({
+          status: 'error',
+          message: 'Unable to check security status',
+          summary: { total: 0, secure: 0, privileged: 0, runningAsRoot: 0, publicPorts: 0 }
+        });
+      }
 
       setError(null);
     } catch (err) {
@@ -413,22 +438,81 @@ const DashboardPage = () => {
       </div>
 
       {/* System Status Banner */}
-      <div className="mt-8 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-cyan-500/10 border border-blue-500/20 rounded-2xl p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/20">
-              <Shield className="w-6 h-6 text-blue-400" />
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Security Status</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {error ? 'Unable to verify security status' : 'All security features active'}
-              </p>
+      {(() => {
+        const getSecurityStyles = () => {
+          switch (securityStatus.status) {
+            case 'critical':
+              return {
+                bg: 'from-red-500/10 via-red-500/10 to-orange-500/10',
+                border: 'border-red-500/20',
+                iconBg: 'bg-red-500/20',
+                iconColor: 'text-red-400',
+                Icon: ShieldX
+              };
+            case 'warning':
+              return {
+                bg: 'from-yellow-500/10 via-orange-500/10 to-yellow-500/10',
+                border: 'border-yellow-500/20',
+                iconBg: 'bg-yellow-500/20',
+                iconColor: 'text-yellow-400',
+                Icon: ShieldAlert
+              };
+            case 'secure':
+              return {
+                bg: 'from-green-500/10 via-emerald-500/10 to-cyan-500/10',
+                border: 'border-green-500/20',
+                iconBg: 'bg-green-500/20',
+                iconColor: 'text-green-400',
+                Icon: ShieldCheck
+              };
+            default:
+              return {
+                bg: 'from-blue-500/10 via-purple-500/10 to-cyan-500/10',
+                border: 'border-blue-500/20',
+                iconBg: 'bg-blue-500/20',
+                iconColor: 'text-blue-400',
+                Icon: Shield
+              };
+          }
+        };
+
+        const styles = getSecurityStyles();
+        const StatusIcon = styles.Icon;
+        const summary = securityStatus.summary || {};
+
+        return (
+          <div className={`mt-8 bg-gradient-to-r ${styles.bg} border ${styles.border} rounded-2xl p-6`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`flex items-center justify-center w-12 h-12 rounded-full ${styles.iconBg}`}>
+                  <StatusIcon className={`w-6 h-6 ${styles.iconColor}`} />
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Security Status</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {securityStatus.message}
+                  </p>
+                  {summary.total > 0 && (
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs">
+                      <span className="text-green-400">{summary.secure} secure</span>
+                      {summary.privileged > 0 && (
+                        <span className="text-red-400">{summary.privileged} privileged</span>
+                      )}
+                      {summary.runningAsRoot > 0 && (
+                        <span className="text-yellow-400">{summary.runningAsRoot} as root</span>
+                      )}
+                      {summary.publicPorts > 0 && (
+                        <span className="text-orange-400">{summary.publicPorts} public ports</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <StatusIcon className={`w-8 h-8 ${styles.iconColor}`} />
             </div>
           </div>
-          <CheckCircle2 className={`w-8 h-8 ${error ? 'text-yellow-400' : 'text-green-400'}`} />
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Modals */}
       <StartContainerModal
