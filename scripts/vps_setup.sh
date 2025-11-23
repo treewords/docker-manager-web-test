@@ -217,14 +217,15 @@ setup_fail2ban() {
     echo "Creating Fail2Ban filters for Nginx..."
     cat > /etc/fail2ban/filter.d/nginx-xss.conf << 'EOF'
 [Definition]
-# Note: % must be escaped as %% for Python configparser
-failregex = ^<HOST> -.*GET.*(\.|\/|\(|\)|<|>|%%22|%%3C|%%3E|'|%%27|`|%%60).*
+# Detect XSS attempts in query strings - look for script tags, event handlers, javascript: URIs
+# Note: %% is escaped % for Python configparser
+failregex = ^<HOST> -.*"(GET|POST).*((\%%3C|\%%3E|<|>).*script|javascript:|on(load|error|click|mouse)=|eval\(|document\.(cookie|location)|alert\().*HTTP
 EOF
 
     cat > /etc/fail2ban/filter.d/nginx-badbots.conf << 'EOF'
 [Definition]
-# Block malicious bots and scanners
-badbots = EmailCollector|WebEMailExtrac|TrackBack/1\.02|sogou|Indy Library|libwww-perl|Python-urllib|Python/3|Wget|curl/7|MauiBot|Baiduspider|Yandex|HTTrack|clshttp|harvest|extract|grab|miner|nikto|scan|python-requests|zgrab|masscan|nuclei|httpx|go-http-client
+# Block malicious bots and scanners (curl, wget, python-requests removed - legitimate for API testing)
+badbots = EmailCollector|WebEMailExtrac|TrackBack/1\.02|sogou|Indy Library|libwww-perl|MauiBot|HTTrack|clshttp|harvest|extract|grab|miner|nikto|zgrab|masscan|nuclei|httpx|go-http-client
 failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*" .* ".*(<badbots>).*"$
 ignoreregex =
 EOF
