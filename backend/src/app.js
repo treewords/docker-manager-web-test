@@ -5,6 +5,7 @@ const http = require('http');
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 
@@ -13,6 +14,17 @@ const { logger } = require('./config/logger');
 const sequelize = require('./config/database');
 const userStore = require('./services/user-store');
 const errorMiddleware = require('./middleware/errorMiddleware');
+
+// Security middleware imports
+const { csrfProtection, setCSRFToken, ensureCSRFToken } = require('./middleware/csrf');
+const { adaptiveRateLimitMiddleware } = require('./middleware/adaptiveRateLimiting');
+const {
+  enhancedSecurityHeaders,
+  requestFingerprint,
+  detectSuspiciousPatterns,
+  requestSizeLimiter,
+  secureJsonParsing
+} = require('./middleware/enhancedSecurity');
 
 // --- Security Validation at Startup ---
 // Validate critical environment variables
@@ -76,6 +88,9 @@ const server = http.createServer(app);
 // Trust the first proxy (configure specific IPs in production)
 app.set('trust proxy', 1);
 
+// Request size limiter (early in the chain)
+app.use(requestSizeLimiter({ maxBodySize: 1048576, maxUrlLength: 2048 }));
+
 // Security headers with helmet
 app.use(
   helmet({
@@ -100,6 +115,9 @@ app.use(
   }),
 );
 
+// Enhanced security headers (additional to helmet)
+app.use(enhancedSecurityHeaders);
+
 // CORS - strict origin checking (no wildcard allowed)
 app.use(
   cors({
@@ -108,25 +126,43 @@ app.use(
   }),
 );
 
+// Cookie parser for CSRF tokens
+app.use(cookieParser());
+
 // Body parsing with size limits to prevent DoS
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Secure JSON parsing (prototype pollution protection)
+app.use(secureJsonParsing);
+
+// Request fingerprinting and suspicious pattern detection
+app.use(requestFingerprint);
+app.use(detectSuspiciousPatterns);
+
+// Adaptive rate limiting for authentication
+app.use(adaptiveRateLimitMiddleware);
+
+// Logging
 app.use(morgan('combined', { stream: logger.stream }));
 
-// Disable caching for all API responses
-app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
-  next();
-});
+// Ensure CSRF token is set
+app.use(ensureCSRFToken);
+
+// --- CSRF Token Endpoint ---
+app.get('/api/csrf-token', setCSRFToken);
 
 // --- API Routes ---
+// Auth routes (login doesn't need CSRF - initial token fetch)
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/containers', require('./routes/containers'));
-app.use('/api/images', require('./routes/images'));
-app.use('/api/networks', require('./routes/networks'));
-app.use('/api/volumes', require('./routes/volumes'));
+
+// Protected routes with CSRF protection
+app.use('/api/containers', csrfProtection, require('./routes/containers'));
+app.use('/api/images', csrfProtection, require('./routes/images'));
+app.use('/api/networks', csrfProtection, require('./routes/networks'));
+app.use('/api/volumes', csrfProtection, require('./routes/volumes'));
 app.use('/api/health', require('./routes/health'));
-app.use('/api/user', require('./routes/user'));
+app.use('/api/user', csrfProtection, require('./routes/user'));
 app.use('/api/security', require('./routes/security'));
 
 // --- Swagger API Documentation ---
