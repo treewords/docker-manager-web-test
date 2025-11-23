@@ -217,7 +217,16 @@ setup_fail2ban() {
     echo "Creating Fail2Ban filters for Nginx..."
     cat > /etc/fail2ban/filter.d/nginx-xss.conf << 'EOF'
 [Definition]
-failregex = ^<HOST> -.*GET.*(\.|\/|\(|\)|<|>|%22|%3C|%3E|'|%27|`|%60).*
+# Note: % must be escaped as %% for Python configparser
+failregex = ^<HOST> -.*GET.*(\.|\/|\(|\)|<|>|%%22|%%3C|%%3E|'|%%27|`|%%60).*
+EOF
+
+    cat > /etc/fail2ban/filter.d/nginx-badbots.conf << 'EOF'
+[Definition]
+# Block malicious bots and scanners
+badbots = EmailCollector|WebEMailExtrac|TrackBack/1\.02|sogou|Indy Library|libwww-perl|Python-urllib|Python/3|Wget|curl/7|MauiBot|Baiduspider|Yandex|HTTrack|clshttp|harvest|extract|grab|miner|nikto|scan|python-requests|zgrab|masscan|nuclei|httpx|go-http-client
+failregex = ^<HOST> -.*"(GET|POST|HEAD).*HTTP.*" .* ".*(<badbots>).*"$
+ignoreregex =
 EOF
 
     cat > /etc/fail2ban/filter.d/nginx-sqli.conf << 'EOF'
