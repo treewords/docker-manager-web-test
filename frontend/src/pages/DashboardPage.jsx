@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Image,
   Network,
   HardDrive,
   Activity,
-  Layers,
   Server,
   Cloud,
   BarChart3,
@@ -14,44 +13,216 @@ import {
   Shield,
   Clock,
   TrendingUp,
-  AlertCircle,
   PlayCircle,
-  PauseCircle
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
+import { getContainers } from '../services/containerService';
+import { getImages } from '../services/imageService';
+import { getNetworks } from '../services/networkService';
+import { getVolumes, createVolume } from '../services/volumeService';
+import { createNetwork } from '../services/networkService';
+import StartContainerModal from '../components/StartContainerModal';
+import PullImageModal from '../components/PullImageModal';
+import CreateNetworkModal from '../components/CreateNetworkModal';
+import CreateVolumeModal from '../components/CreateVolumeModal';
 
 const DashboardPage = () => {
-  // Mock data - in production, this would come from API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Real data from API
+  const [containerData, setContainerData] = useState({ total: 0, running: 0, healthy: true });
+  const [imageData, setImageData] = useState({ total: 0, totalSize: 0, unused: 0 });
+  const [networkData, setNetworkData] = useState({ total: 0, bridge: 0, custom: 0 });
+  const [volumeData, setVolumeData] = useState({ total: 0, totalSize: 0 });
+
+  // System stats
+  const [systemStats, setSystemStats] = useState({
+    cpuUsage: '0%',
+    memoryUsage: '0/0 GB',
+    uptime: 'N/A',
+    apiLatency: '<100ms'
+  });
+
+  // Recent activity from real container events
+  const [recentActivity, setRecentActivity] = useState([]);
+
+  // Modal states
+  const [showStartContainerModal, setShowStartContainerModal] = useState(false);
+  const [showPullImageModal, setShowPullImageModal] = useState(false);
+  const [showCreateNetworkModal, setShowCreateNetworkModal] = useState(false);
+  const [showCreateVolumeModal, setShowCreateVolumeModal] = useState(false);
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      const startTime = Date.now();
+
+      const [containers, images, networks, volumes] = await Promise.all([
+        getContainers().catch(() => []),
+        getImages().catch(() => []),
+        getNetworks().catch(() => []),
+        getVolumes().catch(() => [])
+      ]);
+
+      const apiLatency = Date.now() - startTime;
+
+      // Process containers
+      const runningContainers = containers.filter(c => c.state === 'running');
+      const allHealthy = runningContainers.every(c => !c.status?.includes('unhealthy'));
+      setContainerData({
+        total: containers.length,
+        running: runningContainers.length,
+        healthy: allHealthy
+      });
+
+      // Calculate CPU and Memory from running containers
+      if (runningContainers.length > 0) {
+        const avgCpu = runningContainers.reduce((sum, c) => sum + (parseFloat(c.cpuPercent) || 0), 0) / runningContainers.length;
+        const totalMem = runningContainers.reduce((sum, c) => sum + (parseFloat(c.memoryUsage) || 0), 0);
+        setSystemStats(prev => ({
+          ...prev,
+          cpuUsage: `${avgCpu.toFixed(1)}%`,
+          memoryUsage: `${(totalMem / 1024 / 1024 / 1024).toFixed(1)} GB`,
+          apiLatency: `${apiLatency}ms`
+        }));
+      }
+
+      // Process images
+      const totalImageSize = images.reduce((sum, img) => sum + (img.size || 0), 0);
+      const unusedImages = images.filter(img => !img.inUse).length;
+      setImageData({
+        total: images.length,
+        totalSize: (totalImageSize / 1024 / 1024 / 1024).toFixed(1),
+        unused: unusedImages
+      });
+
+      // Process networks
+      const bridgeNetworks = networks.filter(n => n.driver === 'bridge').length;
+      const customNetworks = networks.filter(n => n.driver !== 'bridge' && n.driver !== 'host' && n.driver !== 'null').length;
+      setNetworkData({
+        total: networks.length,
+        bridge: bridgeNetworks,
+        custom: customNetworks
+      });
+
+      // Process volumes
+      const totalVolumeSize = volumes.reduce((sum, vol) => {
+        const size = vol.UsageData?.Size || 0;
+        return sum + size;
+      }, 0);
+      setVolumeData({
+        total: volumes.length,
+        totalSize: (totalVolumeSize / 1024 / 1024 / 1024).toFixed(1)
+      });
+
+      // Generate recent activity from containers
+      const activities = [];
+      containers.slice(0, 4).forEach(container => {
+        const stateType = container.state === 'running' ? 'success' :
+                         container.state === 'exited' ? 'warning' : 'info';
+        const action = container.state === 'running' ? 'Container running' :
+                      container.state === 'exited' ? 'Container stopped' :
+                      `Container ${container.state}`;
+        activities.push({
+          action,
+          name: container.name,
+          time: container.status || 'Unknown',
+          type: stateType
+        });
+      });
+      setRecentActivity(activities.length > 0 ? activities : [
+        { action: 'No recent activity', name: 'Start using Docker', time: 'Now', type: 'info' }
+      ]);
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to fetch data. Make sure the backend is running.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+    // Refresh data every 30 seconds
+    const interval = setInterval(fetchAllData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAllData]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAllData();
+  };
+
+  // Quick action handlers
+  const handleStartContainerSuccess = () => {
+    setShowStartContainerModal(false);
+    fetchAllData();
+  };
+
+  const handlePullImageSuccess = () => {
+    setShowPullImageModal(false);
+    fetchAllData();
+  };
+
+  const handleCreateNetwork = async (networkData) => {
+    try {
+      await createNetwork(networkData);
+      setShowCreateNetworkModal(false);
+      fetchAllData();
+    } catch (err) {
+      console.error('Error creating network:', err);
+      throw err;
+    }
+  };
+
+  const handleCreateVolume = async (volumeName) => {
+    try {
+      await createVolume(volumeName);
+      setShowCreateVolumeModal(false);
+      fetchAllData();
+    } catch (err) {
+      console.error('Error creating volume:', err);
+      throw err;
+    }
+  };
+
   const stats = [
     {
       title: 'Running Containers',
-      value: '24',
-      change: '+3 today',
+      value: containerData.running.toString(),
+      change: `${containerData.total} total`,
       changeType: 'positive',
       icon: Container,
       gradient: 'from-blue-500 to-cyan-500',
       bgGradient: 'from-blue-500/10 to-cyan-500/10',
       borderColor: 'border-blue-500/20',
       iconColor: 'text-blue-400',
-      status: 'All healthy',
-      statusIcon: CheckCircle2
+      status: containerData.healthy ? 'All healthy' : 'Issues detected',
+      statusIcon: containerData.healthy ? CheckCircle2 : AlertCircle
     },
     {
       title: 'Docker Images',
-      value: '156',
-      change: '12.4 GB total',
+      value: imageData.total.toString(),
+      change: `${imageData.totalSize} GB total`,
       changeType: 'neutral',
       icon: Image,
       gradient: 'from-purple-500 to-pink-500',
       bgGradient: 'from-purple-500/10 to-pink-500/10',
       borderColor: 'border-purple-500/20',
       iconColor: 'text-purple-400',
-      status: '8 unused',
+      status: `${imageData.unused} unused`,
       statusIcon: BarChart3
     },
     {
       title: 'Active Networks',
-      value: '8',
-      change: '3 bridge, 5 custom',
+      value: networkData.total.toString(),
+      change: `${networkData.bridge} bridge, ${networkData.custom} custom`,
       changeType: 'neutral',
       icon: Network,
       gradient: 'from-green-500 to-emerald-500',
@@ -63,32 +234,33 @@ const DashboardPage = () => {
     },
     {
       title: 'Volumes',
-      value: '42',
-      change: '84.2 GB used',
+      value: volumeData.total.toString(),
+      change: `${volumeData.totalSize} GB used`,
       changeType: 'neutral',
       icon: HardDrive,
       gradient: 'from-orange-500 to-red-500',
       bgGradient: 'from-orange-500/10 to-red-500/10',
       borderColor: 'border-orange-500/20',
       iconColor: 'text-orange-400',
-      status: '15% capacity',
+      status: 'Active',
       statusIcon: TrendingUp
     }
   ];
 
   const quickStats = [
-    { label: 'CPU Usage', value: '45%', icon: Activity },
-    { label: 'Memory', value: '8.2/16 GB', icon: Server },
-    { label: 'Uptime', value: '14d 6h', icon: Clock },
-    { label: 'API Latency', value: '<100ms', icon: Zap }
+    { label: 'CPU Usage', value: systemStats.cpuUsage, icon: Activity },
+    { label: 'Memory', value: systemStats.memoryUsage, icon: Server },
+    { label: 'Uptime', value: systemStats.uptime, icon: Clock },
+    { label: 'API Latency', value: systemStats.apiLatency, icon: Zap }
   ];
 
-  const recentActivity = [
-    { action: 'Container started', name: 'nginx-web-01', time: '2 minutes ago', type: 'success' },
-    { action: 'Image pulled', name: 'node:18-alpine', time: '15 minutes ago', type: 'info' },
-    { action: 'Network created', name: 'app-network', time: '1 hour ago', type: 'info' },
-    { action: 'Container stopped', name: 'redis-cache', time: '2 hours ago', type: 'warning' }
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -103,11 +275,28 @@ const DashboardPage = () => {
               Monitor and manage your container infrastructure
             </p>
           </div>
-          <div className="flex items-center space-x-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2">
-            <Activity className="w-5 h-5 text-green-400" />
-            <span className="text-green-400 font-medium">System Healthy</span>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              title="Refresh data"
+            >
+              <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-300 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <div className={`flex items-center space-x-2 ${error ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'} border rounded-xl px-4 py-2`}>
+              <Activity className={`w-5 h-5 ${error ? 'text-red-400' : 'text-green-400'}`} />
+              <span className={`${error ? 'text-red-400' : 'text-green-400'} font-medium`}>
+                {error ? 'Connection Error' : 'System Healthy'}
+              </span>
+            </div>
           </div>
         </div>
+        {error && (
+          <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Main Stats Grid */}
@@ -191,19 +380,31 @@ const DashboardPage = () => {
             <Zap className="w-5 h-5 text-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all hover:-translate-y-0.5">
+            <button
+              onClick={() => setShowStartContainerModal(true)}
+              className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all hover:-translate-y-0.5"
+            >
               <PlayCircle className="w-8 h-8 text-blue-400 mb-2" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Start Container</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all hover:-translate-y-0.5">
+            <button
+              onClick={() => setShowPullImageModal(true)}
+              className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all hover:-translate-y-0.5"
+            >
               <Image className="w-8 h-8 text-purple-400 mb-2" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Pull Image</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 hover:border-green-500/40 transition-all hover:-translate-y-0.5">
+            <button
+              onClick={() => setShowCreateNetworkModal(true)}
+              className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 hover:border-green-500/40 transition-all hover:-translate-y-0.5"
+            >
               <Network className="w-8 h-8 text-green-400 mb-2" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Create Network</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 hover:border-orange-500/40 transition-all hover:-translate-y-0.5">
+            <button
+              onClick={() => setShowCreateVolumeModal(true)}
+              className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 hover:border-orange-500/40 transition-all hover:-translate-y-0.5"
+            >
               <HardDrive className="w-8 h-8 text-orange-400 mb-2" />
               <span className="text-sm font-medium text-gray-900 dark:text-white">Create Volume</span>
             </button>
@@ -220,12 +421,40 @@ const DashboardPage = () => {
             </div>
             <div>
               <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Security Status</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">All security features active • No vulnerabilities detected</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {error ? 'Unable to verify security status' : 'All security features active'}
+              </p>
             </div>
           </div>
-          <CheckCircle2 className="w-8 h-8 text-green-400" />
+          <CheckCircle2 className={`w-8 h-8 ${error ? 'text-yellow-400' : 'text-green-400'}`} />
         </div>
       </div>
+
+      {/* Modals */}
+      <StartContainerModal
+        isOpen={showStartContainerModal}
+        onClose={() => setShowStartContainerModal(false)}
+        onSuccess={handleStartContainerSuccess}
+      />
+
+      {showPullImageModal && (
+        <PullImageModal
+          onClose={() => setShowPullImageModal(false)}
+          onSuccess={handlePullImageSuccess}
+        />
+      )}
+
+      <CreateNetworkModal
+        isOpen={showCreateNetworkModal}
+        onClose={() => setShowCreateNetworkModal(false)}
+        onCreate={handleCreateNetwork}
+      />
+
+      <CreateVolumeModal
+        isOpen={showCreateVolumeModal}
+        onClose={() => setShowCreateVolumeModal(false)}
+        onCreate={handleCreateVolume}
+      />
     </div>
   );
 };
